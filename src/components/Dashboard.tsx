@@ -131,6 +131,12 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
     await updateProfileInDb(updatedLevel, updatedXp);
   };
 
+  const deleteQuest = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setQuests(quests.filter((q) => q.id !== id));
+    await supabase.from('quests').delete().eq('id', id);
+  };
+
   const addQuest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuestTitle.trim()) return;
@@ -262,9 +268,18 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
                   />
                   <span className="text-xs font-medium">{quest.title}</span>
                 </div>
-                <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-1 rounded-lg border border-purple-500/30 font-bold">
-                  +{quest.xp_reward} XP
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-1 rounded-lg border border-purple-500/30 font-bold">
+                    +{quest.xp_reward} XP
+                  </span>
+                  <button
+                    onClick={(e) => deleteQuest(e, quest.id)}
+                    className="text-slate-500 hover:text-red-400 p-1 transition text-xs"
+                    title="Delete Quest"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>
