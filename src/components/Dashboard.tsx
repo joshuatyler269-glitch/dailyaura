@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { HeatmapGrid } from './HeatmapGrid';
 import { LevelUpModal } from './LevelUpModal';
+import { AiDecomposerModal } from './AiDecomposerModal';
 
 interface Quest {
   id: string;
@@ -18,6 +19,7 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [newQuestTitle, setNewQuestTitle] = useState('');
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
 
   const [timeLeft, setTimeLeft] = useState<number>(25 * 60);
   const [isTimerActive, setIsTimerActive] = useState(false);
@@ -155,6 +157,20 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
     }
   };
 
+  const handleAddSubQuests = async (titles: string[]) => {
+    const newItems = titles.map((title) => ({
+      user_id: user.id,
+      title,
+      completed: false,
+      xp_reward: 50,
+    }));
+
+    const { data } = await supabase.from('quests').insert(newItems).select();
+    if (data) {
+      setQuests([...data, ...quests]);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 md:p-8 space-y-6">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -229,7 +245,12 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-base font-bold text-slate-200">Active Quests</h2>
-            <span className="text-xs text-slate-400">Complete tasks to earn XP</span>
+            <button
+              onClick={() => setShowAiModal(true)}
+              className="text-[10px] bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 px-3 py-1.5 rounded-xl border border-purple-500/30 font-bold transition flex items-center gap-1.5"
+            >
+              <span>🤖 AI Decomposer</span>
+            </button>
           </div>
 
           <form onSubmit={addQuest} className="flex gap-2">
@@ -291,6 +312,12 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
           isOpen={showLevelUpModal}
           level={level}
           onClose={() => setShowLevelUpModal(false)}
+        />
+
+        <AiDecomposerModal
+          isOpen={showAiModal}
+          onClose={() => setShowAiModal(false)}
+          onAddSubQuests={handleAddSubQuests}
         />
       </div>
     </div>
