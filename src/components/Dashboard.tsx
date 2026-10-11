@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { HeatmapGrid } from './HeatmapGrid';
 
 interface Quest {
   id: string;
@@ -264,6 +265,9 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
             ))}
           </div>
         </div>
+
+        {/* Consistency Heatmap Component */}
+        <HeatmapGrid />
       </div>
     </div>
   );
