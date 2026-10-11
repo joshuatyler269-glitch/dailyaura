@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 interface Quest {
   id: string;
@@ -8,6 +8,9 @@ interface Quest {
 }
 
 export function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  
   const [level, setLevel] = useState(1);
   const [xp, setXp] = useState(120);
   const maxXp = 300;
@@ -19,8 +22,13 @@ export function App() {
   ]);
   const [newQuestTitle, setNewQuestTitle] = useState('');
   const [showLevelUp, setShowLevelUp] = useState(false);
-  const [sessionTime, setSessionTime] = useState(14500); // Triggers guardian demo
   const [showGuardian, setShowGuardian] = useState(true);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput.trim()) return;
+    setIsLoggedIn(true);
+  };
 
   const toggleQuest = (id: string, xpReward: number, completed: boolean) => {
     const nextCompleted = !completed;
@@ -57,6 +65,47 @@ export function App() {
     setQuests(quests.filter(q => q.id !== id));
   };
 
+  // If not logged in, show a mature landing / login gateway
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4 font-sans">
+        <div className="max-w-md w-full bg-slate-900 border border-purple-500/40 p-8 rounded-3xl shadow-2xl space-y-6 text-center">
+          <div className="space-y-2">
+            <span className="text-xs bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full border border-purple-500/30 font-extrabold tracking-widest">
+              ⚡ GAMIFIED PRODUCTIVITY
+            </span>
+            <h1 className="text-3xl font-extrabold text-purple-400 tracking-wider pt-2">DAILY AURA</h1>
+            <p className="text-slate-400 text-xs">
+              Transform your daily workflow into an RPG. Track quests, earn XP, and conquer phone addiction.
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4 pt-2">
+            <div className="space-y-1 text-left">
+              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Email Address</label>
+              <input
+                type="email"
+                required
+                placeholder="hero@example.com"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs tracking-wider rounded-xl shadow-lg transition"
+            >
+              ENTER THE ARENA
+            </button>
+          </form>
+
+          <p className="text-[10px] text-slate-500">Secure entry to your personal hero session.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 md:p-8 font-sans">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -71,11 +120,14 @@ export function App() {
                   LVL {level}
                 </span>
               </div>
-              <p className="text-slate-400 text-xs mt-1">Gamified Productivity & Anti-Addiction Engine</p>
+              <p className="text-slate-400 text-xs mt-1">{emailInput}</p>
             </div>
-            <div className="px-3 py-1 bg-purple-600/20 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold">
-              🔥 Streak: 5 Days
-            </div>
+            <button
+              onClick={() => setIsLoggedIn(false)}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl transition"
+            >
+              Sign Out
+            </button>
           </div>
 
           <div className="space-y-1.5">
