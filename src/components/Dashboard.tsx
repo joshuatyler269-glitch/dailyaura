@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { HeatmapGrid } from './HeatmapGrid';
+import { LevelUpModal } from './LevelUpModal';
 
 interface Quest {
   id: string;
@@ -16,6 +17,7 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
 
   const [quests, setQuests] = useState<Quest[]>([]);
   const [newQuestTitle, setNewQuestTitle] = useState('');
+  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
 
   const [timeLeft, setTimeLeft] = useState<number>(25 * 60);
   const [isTimerActive, setIsTimerActive] = useState(false);
@@ -112,9 +114,11 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
 
     let updatedXp = xp + xpChange;
     let updatedLevel = level;
+    
     if (updatedXp >= maxXp) {
       updatedLevel += 1;
       updatedXp -= maxXp;
+      setShowLevelUpModal(true);
     } else if (updatedXp < 0) {
       updatedXp = 0;
     }
@@ -266,8 +270,13 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
           </div>
         </div>
 
-        {/* Consistency Heatmap Component */}
         <HeatmapGrid />
+
+        <LevelUpModal
+          isOpen={showLevelUpModal}
+          level={level}
+          onClose={() => setShowLevelUpModal(false)}
+        />
       </div>
     </div>
   );
