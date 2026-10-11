@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { HeatmapGrid } from './HeatmapGrid';
 import { LevelUpModal } from './LevelUpModal';
 import { AiDecomposerModal } from './AiDecomposerModal';
+import { SessionGuardian } from './SessionGuardian';
 
 interface Quest {
   id: string;
@@ -319,6 +320,8 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
           onClose={() => setShowAiModal(false)}
           onAddSubQuests={handleAddSubQuests}
         />
+
+        <SessionGuardian />
       </div>
     </div>
   );
