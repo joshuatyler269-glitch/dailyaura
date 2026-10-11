@@ -179,7 +179,7 @@ export const Dashboard: React.FC<{ user: any }> = ({ user }) => {
           <div className="flex justify-between items-center">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-extrabold tracking-wide text-purple-400">HERO DASHBOARD</h1>
+                <h1 className="text-xl font-extrabold tracking-wide text-purple-400">DAILY AURA</h1>
                 <span className="text-xs bg-purple-500/20 text-purple-300 px-2.5 py-0.5 rounded-full border border-purple-500/30 font-bold">
                   LVL {level}
                 </span>
