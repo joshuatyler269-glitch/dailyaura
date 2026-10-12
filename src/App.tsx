@@ -9,7 +9,9 @@ interface Quest {
 
 export function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
   const [emailInput, setEmailInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
   
   const [level, setLevel] = useState(1);
   const [xp, setXp] = useState(120);
@@ -22,9 +24,9 @@ export function App() {
   ]);
   const [newQuestTitle, setNewQuestTitle] = useState('');
   const [showLevelUp, setShowLevelUp] = useState(false);
-  const [showGuardian, setShowGuardian] = useState(true);
+  const [showGuardian, setShowGuardian] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailInput.trim()) return;
     setIsLoggedIn(true);
@@ -65,42 +67,117 @@ export function App() {
     setQuests(quests.filter(q => q.id !== id));
   };
 
-  // If not logged in, show a mature landing / login gateway
+  // Professional Landing & Auth Gateway
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4 font-sans">
-        <div className="max-w-md w-full bg-slate-900 border border-purple-500/40 p-8 rounded-3xl shadow-2xl space-y-6 text-center">
-          <div className="space-y-2">
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-4 md:p-8 font-sans">
+        {/* Top Branding Header */}
+        <div className="max-w-4xl mx-auto w-full flex justify-between items-center py-4">
+          <div className="flex items-center gap-2">
             <span className="text-xs bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full border border-purple-500/30 font-extrabold tracking-widest">
-              ⚡ GAMIFIED PRODUCTIVITY
+              ⚡ DAILY AURA
             </span>
-            <h1 className="text-3xl font-extrabold text-purple-400 tracking-wider pt-2">DAILY AURA</h1>
-            <p className="text-slate-400 text-xs">
-              Transform your daily workflow into an RPG. Track quests, earn XP, and conquer phone addiction.
-            </p>
+          </div>
+          <div className="text-xs text-slate-400 font-medium hidden md:block">
+            Mobile-First Gamified Productivity Engine
+          </div>
+        </div>
+
+        {/* Hero Section & Auth Card Grid */}
+        <div className="max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center py-8">
+          <div className="space-y-6 text-left">
+            <div className="space-y-3">
+              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight">
+                Gamify Your Life. <span className="text-purple-400">Conquer Procrastination.</span>
+              </h1>
+              <p className="text-slate-400 text-xs md:text-sm leading-relaxed">
+                Transform daily tasks into RPG quests, earn experience points, level up your consistency, and keep phone addiction in check with built-in session guardians.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-2">
+              <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl">
+                <span className="text-purple-400 font-extrabold text-base">RPG Stats</span>
+                <p className="text-[11px] text-slate-400 mt-1">Level progression & XP rewards for every task.</p>
+              </div>
+              <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl">
+                <span className="text-red-400 font-extrabold text-base">Session Guard</span>
+                <p className="text-[11px] text-slate-400 mt-1">Break free from excessive phone and gaming loops.</p>
+              </div>
+            </div>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4 pt-2">
-            <div className="space-y-1 text-left">
-              <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Email Address</label>
-              <input
-                type="email"
-                required
-                placeholder="hero@example.com"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
+          {/* Auth Card with Mode Selector */}
+          <div className="bg-slate-900 border border-purple-500/30 p-8 rounded-3xl shadow-2xl space-y-6">
+            <div className="flex bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700">
+              <button
+                type="button"
+                onClick={() => setAuthMode('signup')}
+                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition ${
+                  authMode === 'signup' 
+                    ? 'bg-purple-600 text-white shadow-lg' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Create Account
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMode('signin')}
+                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition ${
+                  authMode === 'signin' 
+                    ? 'bg-purple-600 text-white shadow-lg' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Sign In
+              </button>
             </div>
-            <button
-              type="submit"
-              className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs tracking-wider rounded-xl shadow-lg transition"
-            >
-              ENTER THE ARENA
-            </button>
-          </form>
 
-          <p className="text-[10px] text-slate-500">Secure entry to your personal hero session.</p>
+            <form onSubmit={handleAuth} className="space-y-4">
+              <div className="space-y-1 text-left">
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="hero@dailyaura.app"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="space-y-1 text-left">
+                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs tracking-wider rounded-xl shadow-lg transition"
+              >
+                {authMode === 'signup' ? 'INITIALIZE HERO ACCOUNT' : 'ENTER DASHBOARD'}
+              </button>
+            </form>
+
+            <div className="text-center">
+              <span className="text-[10px] text-slate-500">
+                {authMode === 'signup' ? 'Start your consistency streak today.' : 'Welcome back, hero.'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="max-w-4xl mx-auto w-full text-center py-4 text-[11px] text-slate-500">
+          Daily Aura &bull; Built for extreme focus and digital wellbeing.
         </div>
       </div>
     );
@@ -122,12 +199,20 @@ export function App() {
               </div>
               <p className="text-slate-400 text-xs mt-1">{emailInput}</p>
             </div>
-            <button
-              onClick={() => setIsLoggedIn(false)}
-              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl transition"
-            >
-              Sign Out
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowGuardian(true)}
+                className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 text-xs rounded-xl transition font-bold"
+              >
+                Test Guard
+              </button>
+              <button
+                onClick={() => setIsLoggedIn(false)}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl transition"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -259,7 +344,7 @@ export function App() {
               </p>
               <div className="space-y-3 pt-2">
                 <button
-                  onClick={() => alert('Closing session. Go touch grass!')}
+                  onClick={() => alert('Session aborted. Go touch grass!')}
                   className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl shadow-lg transition"
                 >
                   STOP PLAYING & TAKE A BREAK
