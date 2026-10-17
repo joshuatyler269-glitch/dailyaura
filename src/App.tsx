@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2 } from 'lucide-react';
+import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award } from 'lucide-react';
 
 export default function DailyAuraApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -12,7 +12,7 @@ export default function DailyAuraApp() {
       level: 1,
       xp: 120,
       maxXp: 500,
-      streak: 3,
+      streak: 5,
       aura: 450
     };
   });
@@ -28,6 +28,14 @@ export default function DailyAuraApp() {
   const [newQuestTitle, setNewQuestTitle] = useState('');
   const [newQuestXp, setNewQuestXp] = useState('50');
   const [newQuestCategory, setNewQuestCategory] = useState('Physical');
+
+  // Simulated activity heatmap data (past 28 days)
+  const [heatmap] = useState([
+    1, 2, 0, 3, 2, 1, 3,
+    0, 1, 2, 2, 3, 1, 2,
+    2, 3, 1, 0, 2, 3, 3,
+    1, 2, 3, 2, 1, 2, 3
+  ]);
 
   useEffect(() => {
     localStorage.setItem('dailyaura_hunter', JSON.stringify(hunter));
@@ -105,15 +113,17 @@ export default function DailyAuraApp() {
               {hunter.name} 
             </h1>
           </div>
-          <span className="text-xs bg-purple-900/40 text-purple-200 px-3 py-1 rounded-full border border-purple-700/50 font-bold">
-            LVL {hunter.level}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs bg-purple-900/40 text-purple-200 px-3 py-1 rounded-full border border-purple-700/50 font-bold flex items-center gap-1">
+              <Flame size={13} className="text-amber-400 fill-amber-400" /> {hunter.streak}d
+            </span>
+          </div>
         </div>
 
         {/* XP Progress Bar */}
         <div className="bg-[#0b0c1c] p-3 rounded-2xl border border-purple-900/40 shadow-inner mt-2">
           <div className="flex justify-between text-xs mb-1.5 font-medium">
-            <span className="text-purple-300 flex items-center gap-1"><Zap size={13} className="text-purple-400" /> XP Progress</span>
+            <span className="text-purple-300 flex items-center gap-1"><Zap size={13} className="text-purple-400" /> XP Progress (Lv.{hunter.level})</span>
             <span className="text-purple-300 font-bold">{hunter.xp} / {hunter.maxXp} XP</span>
           </div>
           <div className="w-full bg-black/60 h-2.5 rounded-full overflow-hidden p-0.5 border border-purple-950">
@@ -228,6 +238,8 @@ export default function DailyAuraApp() {
         {activeTab === 'profile' && (
           <div className="space-y-4">
             <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase">Hunter Profile</h2>
+            
+            {/* Stats Overview */}
             <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 space-y-3 shadow-xl">
               <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
                 <span className="text-purple-400">Hunter Name</span>
@@ -237,11 +249,43 @@ export default function DailyAuraApp() {
                 <span className="text-purple-400">Current Rank</span>
                 <span className="font-bold text-purple-300">{hunter.rank}</span>
               </div>
+              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
+                <span className="text-purple-400">Active Streak</span>
+                <span className="font-bold text-amber-400 flex items-center gap-1"><Flame size={14} /> {hunter.streak} Days</span>
+              </div>
               <div className="flex justify-between py-2.5 text-sm">
                 <span className="text-purple-400">Total Aura Points</span>
                 <span className="font-bold text-fuchsia-400">{hunter.aura}</span>
               </div>
             </div>
+
+            {/* Consistency Heatmap Card */}
+            <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 shadow-xl space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                  <Award size={15} className="text-purple-400" /> Consistency Heatmap
+                </span>
+                <span className="text-[10px] text-purple-400/70">Past 4 Weeks</span>
+              </div>
+              
+              <div className="grid grid-cols-7 gap-2 pt-1">
+                {heatmap.map((intensity, idx) => {
+                  const bgColors = [
+                    'bg-purple-950/30 border-purple-950',
+                    'bg-purple-900/40 border-purple-800/40',
+                    'bg-purple-700/60 border-purple-600/50',
+                    'bg-fuchsia-500 border-fuchsia-400 shadow-[0_0_6px_rgba(217,70,239,0.5)]'
+                  ];
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`h-7 rounded-lg border transition-all ${bgColors[intensity]}`}
+                    ></div>
+                  );
+                })}
+              </div>
+            </div>
+
           </div>
         )}
 
