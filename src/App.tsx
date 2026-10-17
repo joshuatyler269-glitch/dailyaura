@@ -1,368 +1,209 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Swords, User, CheckCircle, Zap, Trophy, Flame } from 'lucide-react';
 
-interface Quest {
-  id: string;
-  title: string;
-  completed: boolean;
-  xp_reward: number;
-}
-
-export function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
-  const [emailInput, setEmailInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
+export default function DailyAuraApp() {
+  // State with Local Storage persistence so progress isn't lost on refresh
+  const [activeTab, setActiveTab] = useState('dashboard');
   
-  const [level, setLevel] = useState(1);
-  const [xp, setXp] = useState(120);
-  const maxXp = 300;
+  const [hunter, setHunter] = useState(() => {
+    const saved = localStorage.getItem('dailyaura_hunter');
+    return saved ? JSON.parse(saved) : {
+      name: 'Shadow Monarch',
+      rank: 'E-Rank Hunter',
+      level: 1,
+      xp: 120,
+      maxXp: 500,
+      streak: 3,
+      aura: 450
+    };
+  });
 
-  const [quests, setQuests] = useState<Quest[]>([
-    { id: '1', title: 'Complete 30 min deep focus work', completed: false, xp_reward: 100 },
-    { id: '2', title: 'Hydrate & step away from screen', completed: true, xp_reward: 30 },
-    { id: '3', title: 'Review daily goals & clear inbox', completed: false, xp_reward: 50 },
-  ]);
-  const [newQuestTitle, setNewQuestTitle] = useState('');
-  const [showLevelUp, setShowLevelUp] = useState(false);
-  const [showGuardian, setShowGuardian] = useState(false);
+  const [quests, setQuests] = useState(() => {
+    const saved = localStorage.getItem('dailyaura_quests');
+    return saved ? JSON.parse(saved) : [
+      { id: 1, title: 'Morning Hydration (500ml water)', xp: 50, completed: false, category: 'Health' },
+      { id: 2, title: 'Read 10 Pages of a Book', xp: 100, completed: false, category: 'Mind' },
+      { id: 3, title: 'Bodyweight Workout (20 Pushups)', xp: 150, completed: false, category: 'Strength' },
+    ];
+  });
 
-  const handleAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailInput.trim()) return;
-    setIsLoggedIn(true);
+  // Save changes to local storage automatically
+  useEffect(() => {
+    localStorage.setItem('dailyaura_hunter', JSON.stringify(hunter));
+  }, [hunter]);
+
+  useEffect(() => {
+    localStorage.setItem('dailyaura_quests', JSON.stringify(quests));
+  }, [quests]);
+
+  const toggleQuest = (id: number) => {
+    setQuests(quests.map(q => {
+      if (q.id === id) {
+        const newCompleted = !q.completed;
+        const xpChange = newCompleted ? q.xp : -q.xp;
+        
+        // Update hunter XP
+        setHunter(prev => {
+          let updatedXp = prev.xp + xpChange;
+          let updatedLevel = prev.level;
+          let updatedMaxXp = prev.maxXp;
+
+          if (updatedXp >= updatedMaxXp) {
+            updatedXp -= updatedMaxXp;
+            updatedLevel += 1;
+            updatedMaxXp += 200; // Increase threshold per level
+          } else if (updatedXp < 0) {
+            updatedXp = 0;
+          }
+
+          return { ...prev, xp: updatedXp, level: updatedLevel, maxXp: updatedMaxXp };
+        });
+
+        return { ...q, completed: newCompleted };
+      }
+      return q;
+    }));
   };
-
-  const toggleQuest = (id: string, xpReward: number, completed: boolean) => {
-    const nextCompleted = !completed;
-    const xpChange = nextCompleted ? xpReward : -xpReward;
-    
-    let updatedXp = xp + xpChange;
-    let updatedLevel = level;
-    if (updatedXp >= maxXp) {
-      updatedLevel += 1;
-      updatedXp -= maxXp;
-      setShowLevelUp(true);
-    } else if (updatedXp < 0) {
-      updatedXp = 0;
-    }
-
-    setXp(updatedXp);
-    setLevel(updatedLevel);
-    setQuests(quests.map(q => q.id === id ? { ...q, completed: nextCompleted } : q));
-  };
-
-  const addQuest = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newQuestTitle.trim()) return;
-    setQuests([{
-      id: Date.now().toString(),
-      title: newQuestTitle,
-      completed: false,
-      xp_reward: 50
-    }, ...quests]);
-    setNewQuestTitle('');
-  };
-
-  const deleteQuest = (id: string) => {
-    setQuests(quests.filter(q => q.id !== id));
-  };
-
-  // Professional Landing & Auth Gateway
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-4 md:p-8 font-sans">
-        {/* Top Branding Header */}
-        <div className="max-w-4xl mx-auto w-full flex justify-between items-center py-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full border border-purple-500/30 font-extrabold tracking-widest">
-              ⚡ DAILY AURA
-            </span>
-          </div>
-          <div className="text-xs text-slate-400 font-medium hidden md:block">
-            Mobile-First Gamified Productivity Engine
-          </div>
-        </div>
-
-        {/* Hero Section & Auth Card Grid */}
-        <div className="max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center py-8">
-          <div className="space-y-6 text-left">
-            <div className="space-y-3">
-              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight leading-tight">
-                Gamify Your Life. <span className="text-purple-400">Conquer Procrastination.</span>
-              </h1>
-              <p className="text-slate-400 text-xs md:text-sm leading-relaxed">
-                Transform daily tasks into RPG quests, earn experience points, level up your consistency, and keep phone addiction in check with built-in session guardians.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl">
-                <span className="text-purple-400 font-extrabold text-base">RPG Stats</span>
-                <p className="text-[11px] text-slate-400 mt-1">Level progression & XP rewards for every task.</p>
-              </div>
-              <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl">
-                <span className="text-red-400 font-extrabold text-base">Session Guard</span>
-                <p className="text-[11px] text-slate-400 mt-1">Break free from excessive phone and gaming loops.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Auth Card with Mode Selector */}
-          <div className="bg-slate-900 border border-purple-500/30 p-8 rounded-3xl shadow-2xl space-y-6">
-            <div className="flex bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700">
-              <button
-                type="button"
-                onClick={() => setAuthMode('signup')}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition ${
-                  authMode === 'signup' 
-                    ? 'bg-purple-600 text-white shadow-lg' 
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Create Account
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthMode('signin')}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition ${
-                  authMode === 'signin' 
-                    ? 'bg-purple-600 text-white shadow-lg' 
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Sign In
-              </button>
-            </div>
-
-            <form onSubmit={handleAuth} className="space-y-4">
-              <div className="space-y-1 text-left">
-                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="hero@dailyaura.app"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div className="space-y-1 text-left">
-                <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Password</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs tracking-wider rounded-xl shadow-lg transition"
-              >
-                {authMode === 'signup' ? 'INITIALIZE HERO ACCOUNT' : 'ENTER DASHBOARD'}
-              </button>
-            </form>
-
-            <div className="text-center">
-              <span className="text-[10px] text-slate-500">
-                {authMode === 'signup' ? 'Start your consistency streak today.' : 'Welcome back, hero.'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="max-w-4xl mx-auto w-full text-center py-4 text-[11px] text-slate-500">
-          Daily Aura &bull; Built for extreme focus and digital wellbeing.
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 md:p-8 font-sans">
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col max-w-md mx-auto relative pb-20 shadow-2xl border-x border-slate-800">
+      
+      {/* Top Header / Status Bar */}
+      <header className="p-4 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex justify-between items-center sticky top-0 z-10">
+        <div>
+          <span className="text-xs uppercase tracking-widest text-cyan-400 font-bold">{hunter.rank}</span>
+          <h1 className="text-lg font-black tracking-wide flex items-center gap-1.5">
+            {hunter.name} <span className="text-xs bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30">Lv.{hunter.level}</span>
+          </h1>
+        </div>
+        <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-1 bg-amber-500/10 text-amber-400 px-2.5 py-1 rounded-full border border-amber-500/20">
+            <Flame size={14} className="fill-amber-400" />
+            <span className="font-bold">{hunter.streak}d</span>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 p-4 overflow-y-auto">
         
-        {/* Header / Hero Stats */}
-        <div className="bg-gradient-to-r from-purple-900/50 via-slate-900 to-indigo-950/50 border border-purple-500/40 p-6 rounded-3xl shadow-2xl space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-extrabold tracking-wider text-purple-400">DAILY AURA</h1>
-                <span className="text-xs bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full border border-purple-500/30 font-bold">
-                  LVL {level}
-                </span>
+        {/* TAB 1: DASHBOARD */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-4">
+            {/* XP Progress Card */}
+            <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 p-4 rounded-2xl border border-slate-800 relative overflow-hidden">
+              <div className="absolute right-[-10px] bottom-[-10px] text-cyan-500/5">
+                <Trophy size={120} />
               </div>
-              <p className="text-slate-400 text-xs mt-1">{emailInput}</p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowGuardian(true)}
-                className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 text-xs rounded-xl transition font-bold"
-              >
-                Test Guard
-              </button>
-              <button
-                onClick={() => setIsLoggedIn(false)}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl transition"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs text-slate-400 font-medium">
-              <span>XP Progress</span>
-              <span>{xp} / {maxXp} XP</span>
-            </div>
-            <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
-              <div
-                className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full transition-all duration-500"
-                style={{ width: `${Math.min(100, (xp / maxXp) * 100)}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quests Section */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-base font-bold text-slate-200">Active Quests</h2>
-            <span className="text-xs text-slate-400">Complete tasks to gain XP</span>
-          </div>
-
-          <form onSubmit={addQuest} className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Add a new side quest..."
-              value={newQuestTitle}
-              onChange={(e) => setNewQuestTitle(e.target.value)}
-              className="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition"
-            >
-              Add Quest
-            </button>
-          </form>
-
-          <div className="space-y-2.5 pt-2">
-            {quests.map((quest) => (
-              <div
-                key={quest.id}
-                onClick={() => toggleQuest(quest.id, quest.xp_reward, quest.completed)}
-                className={`flex justify-between items-center p-4 rounded-2xl border transition cursor-pointer ${
-                  quest.completed
-                    ? 'bg-purple-950/20 border-purple-500/30 text-slate-400 line-through'
-                    : 'bg-slate-800/60 border-slate-700 hover:border-slate-600 text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={quest.completed}
-                    onChange={() => {}}
-                    className="w-4 h-4 accent-purple-500 rounded cursor-pointer"
-                  />
-                  <span className="text-xs font-medium">{quest.title}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2.5 py-1 rounded-lg border border-purple-500/30 font-bold">
-                    +{quest.xp_reward} XP
-                  </span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteQuest(quest.id); }}
-                    className="text-slate-500 hover:text-red-400 p-1 text-xs"
-                  >
-                    ✕
-                  </button>
-                </div>
+              <div className="flex justify-between text-sm mb-2 font-medium">
+                <span className="text-slate-400 flex items-center gap-1"><Zap size={14} className="text-cyan-400" /> Experience Progress</span>
+                <span className="text-cyan-400 font-bold">{hunter.xp} / {hunter.maxXp} XP</span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Consistency Heatmap */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-base font-bold text-slate-200">Consistency Heatmap</h2>
-            <span className="text-xs text-slate-400">Past 4 Weeks</span>
-          </div>
-          <div className="grid grid-cols-7 gap-2 pt-2">
-            {Array.from({ length: 28 }).map((_, i) => {
-              const active = i % 2 === 0 || i % 5 === 0;
-              return (
-                <div
-                  key={i}
-                  className={`h-8 rounded-xl transition border ${
-                    active 
-                      ? 'bg-purple-600/80 border-purple-400 shadow-lg shadow-purple-900/30' 
-                      : 'bg-slate-800/50 border-slate-700/50'
-                  }`}
-                  title={`Day ${i + 1}: ${active ? 'Active' : 'Rest'}`}
+              <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                <div 
+                  className="bg-gradient-to-r from-cyan-500 to-blue-600 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${(hunter.xp / hunter.maxXp) * 100}%` }}
                 ></div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Level Up Modal */}
-        {showLevelUp && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-b from-purple-900/90 via-slate-900 to-slate-950 border border-purple-500/50 p-8 rounded-3xl shadow-2xl text-center space-y-6 max-w-sm w-full animate-bounce">
-              <span className="text-xs bg-purple-500/20 text-purple-300 px-3 py-1 rounded-full border border-purple-500/30 font-extrabold tracking-widest">
-                🎉 ACHIEVEMENT UNLOCKED
-              </span>
-              <h2 className="text-3xl font-extrabold text-white tracking-wide">LEVEL UP!</h2>
-              <span className="text-6xl font-black text-purple-400 font-mono">LVL {level}</span>
-              <button
-                onClick={() => setShowLevelUp(false)}
-                className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition"
-              >
-                CONTINUE QUEST
-              </button>
+              </div>
             </div>
-          </div>
-        )}
 
-        {/* Session Guardian / Phone Addiction Warning Modal */}
-        {showGuardian && (
-          <div className="fixed inset-0 bg-red-950/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-900 border-2 border-red-600 p-8 rounded-3xl shadow-[0_0_50px_rgba(220,38,38,0.5)] text-center space-y-6 max-w-sm w-full animate-pulse">
-              <span className="text-xs bg-red-500/20 text-red-400 px-3 py-1 rounded-full border border-red-500/40 font-extrabold tracking-widest">
-                🚨 DOOMSDAY PROTOCOL: OVERLOAD
-              </span>
-              <h2 className="text-2xl font-extrabold text-white tracking-wide">4+ HOURS ON PHONE</h2>
-              <p className="text-slate-400 text-xs">
-                Heavy gaming or screen time detected on your device. Your real-world goals are waiting!
-              </p>
-              <div className="space-y-3 pt-2">
-                <button
-                  onClick={() => alert('Session aborted. Go touch grass!')}
-                  className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl shadow-lg transition"
-                >
-                  STOP PLAYING & TAKE A BREAK
-                </button>
-                <button
-                  onClick={() => setShowGuardian(false)}
-                  className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs rounded-xl transition"
-                >
-                  Risky Bypass (Continue Anyway)
-                </button>
+            {/* Daily Quests Section */}
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-md font-bold tracking-wide text-slate-200">Daily Quests</h2>
+                <span className="text-xs text-slate-400">{quests.filter(q => q.completed).length}/{quests.length} Completed</span>
+              </div>
+              
+              <div className="space-y-2.5">
+                {quests.map(quest => (
+                  <div 
+                    key={quest.id}
+                    onClick={() => toggleQuest(quest.id)}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                      quest.completed 
+                        ? 'bg-cyan-950/20 border-cyan-500/30 text-slate-400' 
+                        : 'bg-slate-900/60 border-slate-800 text-slate-200 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center border transition-all ${
+                        quest.completed ? 'bg-cyan-500 border-cyan-400 text-slate-950' : 'border-slate-700 bg-slate-800'
+                      }`}>
+                        {quest.completed && <CheckCircle size={16} className="stroke-[3]" />}
+                      </div>
+                      <div>
+                        <p className={`text-sm font-medium ${quest.completed ? 'line-through text-slate-500' : ''}`}>{quest.title}</p>
+                        <span className="text-[10px] text-cyan-400 font-semibold bg-cyan-500/10 px-1.5 py-0.5 rounded">{quest.category}</span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-amber-400">+{quest.xp} XP</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
-      </div>
+        {/* TAB 2: GUILD HALL */}
+        {activeTab === 'guild' && (
+          <div className="space-y-4">
+            <h2 className="text-md font-bold tracking-wide text-slate-200">Guild Hall</h2>
+            <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center py-10">
+              <Swords className="mx-auto text-slate-600 mb-2" size={40} />
+              <p className="text-slate-400 text-sm">Global Hunter Board coming soon.</p>
+              <p className="text-xs text-slate-600 mt-1">Compete with other hunters worldwide.</p>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: PROFILE */}
+        {activeTab === 'profile' && (
+          <div className="space-y-4">
+            <h2 className="text-md font-bold tracking-wide text-slate-200">Hunter Profile</h2>
+            <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-3">
+              <div className="flex justify-between py-2 border-b border-slate-800/60 text-sm">
+                <span className="text-slate-400">Hunter Name</span>
+                <span className="font-bold">{hunter.name}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-800/60 text-sm">
+                <span className="text-slate-400">Current Rank</span>
+                <span className="font-bold text-cyan-400">{hunter.rank}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-slate-800/60 text-sm">
+                <span className="text-slate-400">Total Aura Points</span>
+                <span className="font-bold text-amber-400">{hunter.aura}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* Bottom Navigation Bar */}
+      <nav className="absolute bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur border-t border-slate-800 flex justify-around p-2.5 z-10">
+        <button 
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          <Shield size={20} />
+          <span className="text-[10px] font-semibold">Dashboard</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('guild')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'guild' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          <Swords size={20} />
+          <span className="text-[10px] font-semibold">Guild Hall</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('profile')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'profile' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          <User size={20} />
+          <span className="text-[10px] font-semibold">Profile</span>
+        </button>
+      </nav>
+
     </div>
   );
 }
-
-export default App;
