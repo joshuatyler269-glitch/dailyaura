@@ -1,12 +1,217 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Daily Aura - Gamified Focus & Quests</title>
-  </head>
-  <body class="bg-slate-950 text-white">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Aura - Solo Leveling RPG Fitness</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0f19',
+                        cardBg: '#131827',
+                        accentPurple: '#8b5cf6',
+                        accentGlow: '#a855f7'
+                    }
+                }
+            }
+        }
+    >
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-darkBg text-slate-100 font-sans min-h-screen flex flex-col justify-between pb-20">
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-md mx-auto w-full p-4 flex-1">
+        
+        <!-- ================= TAB 1: DASHBOARD ================= -->
+        <div id="tab-dashboard" class="tab-content space-y-6">
+            <!-- Header / Hunter HUD -->
+            <div class="bg-cardBg border border-purple-900/40 p-4 rounded-2xl shadow-lg relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-purple-600/10 rounded-full blur-2xl"></div>
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <span class="text-xs uppercase tracking-wider text-purple-400 font-bold">Rank: E-Hunter</span>
+                        <h1 class="text-xl font-extrabold tracking-tight">Shadow Monarch</h1>
+                    </div>
+                    <div class="bg-purple-950/60 border border-purple-500/30 px-3 py-1 rounded-full text-xs font-semibold text-purple-300">
+                        Level <span id="user-level">1</span>
+                    </div>
+                </div>
+                <!-- XP Bar -->
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs text-slate-400">
+                        <span>XP Progress</span>
+                        <span id="xp-text">120 / 500 XP</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                        <div id="xp-bar" class="bg-gradient-to-r from-purple-600 to-indigo-500 h-full w-[24%] transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Quests Section -->
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i data-lucide="sword" class="w-5 h-5 text-purple-400"></i> Daily Quests
+                    </h2>
+                    <span class="text-xs text-slate-400">Resets daily</span>
+                </div>
+
+                <!-- Quest Item 1 -->
+                <div onclick="completeQuest(this, 50)" class="quest-card bg-cardBg border border-slate-800 p-4 rounded-xl flex items-center justify-between cursor-pointer hover:border-purple-500/50 transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-purple-950/50 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                            <i data-lucide="footprints" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold">Walk 10,000 Steps</h3>
+                            <p class="text-xs text-slate-400">+50 XP • Physical Discipline</p>
+                        </div>
+                    </div>
+                    <div class="w-6 h-6 rounded-full border border-slate-600 flex items-center justify-center check-circle">
+                        <div class="w-3 h-3 rounded-full bg-purple-500 hidden"></div>
+                    </div>
+                </div>
+
+                <!-- Quest Item 2 -->
+                <div onclick="completeQuest(this, 40)" class="quest-card bg-cardBg border border-slate-800 p-4 rounded-xl flex items-center justify-between cursor-pointer hover:border-purple-500/50 transition">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-purple-950/50 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                            <i data-lucide="book-open" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-semibold">Read 20 Pages</h3>
+                            <p class="text-xs text-slate-400">+40 XP • Mental Fortitude</p>
+                        </div>
+                    </div>
+                    <div class="w-6 h-6 rounded-full border border-slate-600 flex items-center justify-center check-circle">
+                        <div class="w-3 h-3 rounded-full bg-purple-500 hidden"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TAB 2: GUILD HALL ================= -->
+        <div id="tab-guild" class="tab-content hidden space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold flex items-center gap-2">
+                    <i data-lucide="shield" class="w-5 h-5 text-purple-400"></i> Guild Board
+                </h2>
+                <button class="bg-purple-600 hover:bg-purple-500 text-xs px-3 py-1.5 rounded-lg font-semibold transition">Post Quest</button>
+            </div>
+            
+            <p class="text-xs text-slate-400">Join forces with other hunters to conquer joint fitness milestones.</p>
+
+            <!-- Sample Guild Post -->
+            <div class="bg-cardBg border border-slate-800 p-4 rounded-xl space-y-3">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-sm font-bold text-purple-300">ShadowBrooke Guild</h3>
+                        <p class="text-xs text-slate-400">Posted by @JinWoo_99</p>
+                    </div>
+                    <span class="bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-medium">Open Party</span>
+                </div>
+                <p class="text-xs text-slate-300">Looking for 2 gym bros to team up for a combined 20k step co-op quest today!</p>
+                <button class="w-full bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/40 text-purple-300 text-xs py-2 rounded-lg font-semibold transition">
+                    Request to Join Party
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= TAB 3: PROFILE & SETTINGS ================= -->
+        <div id="tab-profile" class="tab-content hidden space-y-4">
+            <h2 class="text-lg font-bold flex items-center gap-2">
+                <i data-lucide="user" class="w-5 h-5 text-purple-400"></i> Hunter Command Center
+            </h2>
+
+            <!-- Biometrics & Settings Card -->
+            <div class="bg-cardBg border border-slate-800 p-4 rounded-xl space-y-4">
+                <h3 class="text-xs uppercase tracking-wider text-purple-400 font-bold">Physical Biometrics</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11px] text-slate-400 block mb-1">Weight (kg)</label>
+                        <input type="number" value="70" class="w-full bg-darkBg border border-slate-700 rounded-lg p-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-400 block mb-1">Height (cm)</label>
+                        <input type="number" value="175" class="w-full bg-darkBg border border-slate-700 rounded-lg p-2 text-sm text-slate-200 focus:outline-none focus:border-purple-500">
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+                    <div>
+                        <span class="text-sm font-medium block">Smartwatch Link</span>
+                        <span class="text-xs text-emerald-400">Connected (Heart Rate: 72 bpm)</span>
+                    </div>
+                    <span class="text-xs bg-slate-800 px-3 py-1 rounded-lg text-slate-300">Sync</span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ================= BOTTOM NAVIGATION BAR ================= -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-cardBg/90 backdrop-blur-md border-t border-slate-800 max-w-md mx-auto flex justify-around p-3">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn flex flex-col items-center gap-1 text-purple-400 transition">
+            <i data-lucide="sword" class="w-5 h-5"></i>
+            <span class="text-[10px] font-medium">Dashboard</span>
+        </button>
+        <button onclick="switchTab('guild')" id="nav-guild" class="nav-btn flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200 transition">
+            <i data-lucide="shield" class="w-5 h-5"></i>
+            <span class="text-[10px] font-medium">Guild Hall</span>
+        </button>
+        <button onclick="switchTab('profile')" id="nav-profile" class="nav-btn flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200 transition">
+            <i data-lucide="user" class="w-5 h-5"></i>
+            <span class="text-[10px] font-medium">Profile</span>
+        </button>
+    </nav>
+
+    <!-- Script to handle tab switching and XP logic -->
+    <script>
+        lucide.createIcons();
+
+        let currentXP = 120;
+        let maxXP = 500;
+        let currentLevel = 1;
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-purple-400');
+                btn.classList.add('text-slate-400');
+            });
+
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            const activeBtn = document.getElementById('nav-' + tabName);
+            activeBtn.classList.remove('text-slate-400');
+            activeBtn.classList.add('text-purple-400');
+        }
+
+        function completeQuest(card, xpGain) {
+            const circle = card.querySelector('.check-circle div');
+            if (circle.classList.contains('hidden')) {
+                circle.classList.remove('hidden');
+                card.classList.add('border-purple-500/60', 'bg-purple-950/20');
+                
+                currentXP += xpGain;
+                if (currentXP >= maxXP) {
+                    currentXP -= maxXP;
+                    currentLevel++;
+                    document.getElementById('user-level').innerText = currentLevel;
+                }
+                
+                let percentage = (currentXP / maxXP) * 100;
+                document.getElementById('xp-bar').style.width = percentage + '%';
+                document.getElementById('xp-text').innerText = currentXP + ' / ' + maxXP + ' XP';
+            }
+        }
+    </script>
+</body>
 </html>
