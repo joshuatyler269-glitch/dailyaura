@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Swords, User, CheckCircle, Zap, Trophy, Flame } from 'lucide-react';
 
 export default function DailyAuraApp() {
-  // State with Local Storage persistence so progress isn't lost on refresh
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const [hunter, setHunter] = useState(() => {
@@ -21,13 +20,11 @@ export default function DailyAuraApp() {
   const [quests, setQuests] = useState(() => {
     const saved = localStorage.getItem('dailyaura_quests');
     return saved ? JSON.parse(saved) : [
-      { id: 1, title: 'Morning Hydration (500ml water)', xp: 50, completed: false, category: 'Health' },
-      { id: 2, title: 'Read 10 Pages of a Book', xp: 100, completed: false, category: 'Mind' },
-      { id: 3, title: 'Bodyweight Workout (20 Pushups)', xp: 150, completed: false, category: 'Strength' },
+      { id: 1, title: 'Walk 10,000 Steps', xp: 50, completed: false, category: 'Physical Discipline' },
+      { id: 2, title: 'Read 20 Pages', xp: 40, completed: false, category: 'Mental Fortitude' },
     ];
   });
 
-  // Save changes to local storage automatically
   useEffect(() => {
     localStorage.setItem('dailyaura_hunter', JSON.stringify(hunter));
   }, [hunter]);
@@ -42,7 +39,6 @@ export default function DailyAuraApp() {
         const newCompleted = !q.completed;
         const xpChange = newCompleted ? q.xp : -q.xp;
         
-        // Update hunter XP
         setHunter(prev => {
           let updatedXp = prev.xp + xpChange;
           let updatedLevel = prev.level;
@@ -51,7 +47,7 @@ export default function DailyAuraApp() {
           if (updatedXp >= updatedMaxXp) {
             updatedXp -= updatedMaxXp;
             updatedLevel += 1;
-            updatedMaxXp += 200; // Increase threshold per level
+            updatedMaxXp += 200;
           } else if (updatedXp < 0) {
             updatedXp = 0;
           }
@@ -66,13 +62,14 @@ export default function DailyAuraApp() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col max-w-md mx-auto relative pb-20 shadow-2xl border-x border-slate-800">
+    // Added explicit style and dark background classes to completely override light mode overrides
+    <div style={{ backgroundColor: '#020617', color: '#ffffff' }} className="min-h-screen bg-[#020617] text-white flex flex-col max-w-md mx-auto relative pb-20 shadow-2xl border-x border-slate-800">
       
-      {/* Top Header / Status Bar */}
-      <header className="p-4 bg-slate-900/80 backdrop-blur border-b border-slate-800 flex justify-between items-center sticky top-0 z-10">
+      {/* Top Header */}
+      <header className="p-4 bg-slate-900/90 backdrop-blur border-b border-slate-800 flex justify-between items-center sticky top-0 z-10">
         <div>
           <span className="text-xs uppercase tracking-widest text-cyan-400 font-bold">{hunter.rank}</span>
-          <h1 className="text-lg font-black tracking-wide flex items-center gap-1.5">
+          <h1 className="text-lg font-black tracking-wide text-white flex items-center gap-1.5">
             {hunter.name} <span className="text-xs bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/30">Lv.{hunter.level}</span>
           </h1>
         </div>
@@ -87,16 +84,12 @@ export default function DailyAuraApp() {
       {/* Main Content Area */}
       <main className="flex-1 p-4 overflow-y-auto">
         
-        {/* TAB 1: DASHBOARD */}
         {activeTab === 'dashboard' && (
           <div className="space-y-4">
             {/* XP Progress Card */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 p-4 rounded-2xl border border-slate-800 relative overflow-hidden">
-              <div className="absolute right-[-10px] bottom-[-10px] text-cyan-500/5">
-                <Trophy size={120} />
-              </div>
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 relative overflow-hidden shadow-lg">
               <div className="flex justify-between text-sm mb-2 font-medium">
-                <span className="text-slate-400 flex items-center gap-1"><Zap size={14} className="text-cyan-400" /> Experience Progress</span>
+                <span className="text-slate-300 flex items-center gap-1"><Zap size={14} className="text-cyan-400" /> Experience Progress</span>
                 <span className="text-cyan-400 font-bold">{hunter.xp} / {hunter.maxXp} XP</span>
               </div>
               <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
@@ -110,7 +103,7 @@ export default function DailyAuraApp() {
             {/* Daily Quests Section */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-md font-bold tracking-wide text-slate-200">Daily Quests</h2>
+                <h2 className="text-md font-bold tracking-wide text-slate-100">Daily Quests</h2>
                 <span className="text-xs text-slate-400">{quests.filter(q => q.completed).length}/{quests.length} Completed</span>
               </div>
               
@@ -119,10 +112,10 @@ export default function DailyAuraApp() {
                   <div 
                     key={quest.id}
                     onClick={() => toggleQuest(quest.id)}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between shadow-md ${
                       quest.completed 
-                        ? 'bg-cyan-950/20 border-cyan-500/30 text-slate-400' 
-                        : 'bg-slate-900/60 border-slate-800 text-slate-200 hover:border-slate-700'
+                        ? 'bg-cyan-950/30 border-cyan-500/40 text-slate-300' 
+                        : 'bg-slate-900 border-slate-800 text-white hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -132,8 +125,8 @@ export default function DailyAuraApp() {
                         {quest.completed && <CheckCircle size={16} className="stroke-[3]" />}
                       </div>
                       <div>
-                        <p className={`text-sm font-medium ${quest.completed ? 'line-through text-slate-500' : ''}`}>{quest.title}</p>
-                        <span className="text-[10px] text-cyan-400 font-semibold bg-cyan-500/10 px-1.5 py-0.5 rounded">{quest.category}</span>
+                        <p className={`text-sm font-medium ${quest.completed ? 'line-through text-slate-400' : 'text-white'}`}>{quest.title}</p>
+                        <span className="text-[10px] text-cyan-400 font-semibold bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">{quest.category}</span>
                       </div>
                     </div>
                     <span className="text-xs font-bold text-amber-400">+{quest.xp} XP</span>
@@ -144,32 +137,30 @@ export default function DailyAuraApp() {
           </div>
         )}
 
-        {/* TAB 2: GUILD HALL */}
         {activeTab === 'guild' && (
           <div className="space-y-4">
-            <h2 className="text-md font-bold tracking-wide text-slate-200">Guild Hall</h2>
-            <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center py-10">
-              <Swords className="mx-auto text-slate-600 mb-2" size={40} />
-              <p className="text-slate-400 text-sm">Global Hunter Board coming soon.</p>
-              <p className="text-xs text-slate-600 mt-1">Compete with other hunters worldwide.</p>
+            <h2 className="text-md font-bold tracking-wide text-slate-100">Guild Hall</h2>
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-center py-10 shadow-lg">
+              <Swords className="mx-auto text-slate-500 mb-2" size={40} />
+              <p className="text-slate-300 text-sm">Global Hunter Board coming soon.</p>
+              <p className="text-xs text-slate-500 mt-1">Compete with other hunters worldwide.</p>
             </div>
           </div>
         )}
 
-        {/* TAB 3: PROFILE */}
         {activeTab === 'profile' && (
           <div className="space-y-4">
-            <h2 className="text-md font-bold tracking-wide text-slate-200">Hunter Profile</h2>
-            <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-3">
-              <div className="flex justify-between py-2 border-b border-slate-800/60 text-sm">
+            <h2 className="text-md font-bold tracking-wide text-slate-100">Hunter Profile</h2>
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3 shadow-lg">
+              <div className="flex justify-between py-2 border-b border-slate-800 text-sm">
                 <span className="text-slate-400">Hunter Name</span>
-                <span className="font-bold">{hunter.name}</span>
+                <span className="font-bold text-white">{hunter.name}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-slate-800/60 text-sm">
+              <div className="flex justify-between py-2 border-b border-slate-800 text-sm">
                 <span className="text-slate-400">Current Rank</span>
                 <span className="font-bold text-cyan-400">{hunter.rank}</span>
               </div>
-              <div className="flex justify-between py-2 border-b border-slate-800/60 text-sm">
+              <div className="flex justify-between py-2 text-sm">
                 <span className="text-slate-400">Total Aura Points</span>
                 <span className="font-bold text-amber-400">{hunter.aura}</span>
               </div>
@@ -180,7 +171,7 @@ export default function DailyAuraApp() {
       </main>
 
       {/* Bottom Navigation Bar */}
-      <nav className="absolute bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur border-t border-slate-800 flex justify-around p-2.5 z-10">
+      <nav className="absolute bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur border-t border-slate-800 flex justify-around p-2.5 z-10">
         <button 
           onClick={() => setActiveTab('dashboard')}
           className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
