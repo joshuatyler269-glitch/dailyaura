@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Swords, User, CheckCircle, Zap, Trophy, Flame } from 'lucide-react';
+import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2 } from 'lucide-react';
 
 export default function DailyAuraApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -11,7 +11,7 @@ export default function DailyAuraApp() {
       rank: 'E-Rank Hunter',
       level: 1,
       xp: 120,
-      maxXp: 300,
+      maxXp: 500,
       streak: 3,
       aura: 450
     };
@@ -20,11 +20,14 @@ export default function DailyAuraApp() {
   const [quests, setQuests] = useState(() => {
     const saved = localStorage.getItem('dailyaura_quests');
     return saved ? JSON.parse(saved) : [
-      { id: 1, title: 'Complete 30 min deep focus work', xp: 100, completed: false, category: 'Deep Work' },
-      { id: 2, title: 'Hydrate & step away from screen', xp: 30, completed: false, category: 'Health' },
-      { id: 3, title: 'Review daily goals & clear inbox', xp: 50, completed: false, category: 'Strategy' },
+      { id: 1, title: 'Walk 10,000 Steps', xp: 50, completed: false, category: 'Physical Discipline' },
+      { id: 2, title: 'Read 20 Pages', xp: 40, completed: false, category: 'Mental Fortitude' },
     ];
   });
+
+  const [newQuestTitle, setNewQuestTitle] = useState('');
+  const [newQuestXp, setNewQuestXp] = useState('50');
+  const [newQuestCategory, setNewQuestCategory] = useState('Physical');
 
   useEffect(() => {
     localStorage.setItem('dailyaura_hunter', JSON.stringify(hunter));
@@ -41,7 +44,6 @@ export default function DailyAuraApp() {
           const newCompleted = !q.completed;
           const xpChange = newCompleted ? q.xp : -q.xp;
           
-          // Safely update hunter XP and handle leveling up
           setHunter(prevHunter => {
             let updatedXp = prevHunter.xp + xpChange;
             let updatedLevel = prevHunter.level;
@@ -50,7 +52,7 @@ export default function DailyAuraApp() {
             while (updatedXp >= updatedMaxXp) {
               updatedXp -= updatedMaxXp;
               updatedLevel += 1;
-              updatedMaxXp += 150; // Incremental jump per level
+              updatedMaxXp += 150;
             }
             if (updatedXp < 0) updatedXp = 0;
 
@@ -70,23 +72,42 @@ export default function DailyAuraApp() {
     });
   };
 
+  const addQuest = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newQuestTitle.trim()) return;
+
+    const newQuest = {
+      id: Date.now(),
+      title: newQuestTitle.trim(),
+      xp: parseInt(newQuestXp) || 50,
+      completed: false,
+      category: newQuestCategory
+    };
+
+    setQuests([newQuest, ...quests]);
+    setNewQuestTitle('');
+  };
+
+  const deleteQuest = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setQuests(quests.filter(q => q.id !== id));
+  };
+
   return (
     <div style={{ backgroundColor: '#090a16', color: '#ffffff' }} className="min-h-screen bg-[#090a16] text-white flex flex-col max-w-md mx-auto relative pb-24 shadow-2xl border-x border-purple-950/40">
       
-      {/* Top Header with Purple Gradient Card Style */}
+      {/* Top Header */}
       <header className="p-4 bg-gradient-to-br from-[#13112a] via-[#1a1638] to-[#090a16] backdrop-blur border-b border-purple-900/30 sticky top-0 z-10 shadow-lg">
         <div className="flex justify-between items-center mb-3">
           <div>
             <span className="text-[10px] uppercase tracking-widest text-purple-300 font-bold bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-800/40">{hunter.rank}</span>
-            <h1 className="text-xl font-black tracking-wide text-white flex items-center gap-2 mt-1">
+            <h1 className="text-xl font-black tracking-wide text-white mt-1">
               {hunter.name} 
             </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-purple-900/40 text-purple-200 px-3 py-1 rounded-full border border-purple-700/50 font-bold">
-              LVL {hunter.level}
-            </span>
-          </div>
+          <span className="text-xs bg-purple-900/40 text-purple-200 px-3 py-1 rounded-full border border-purple-700/50 font-bold">
+            LVL {hunter.level}
+          </span>
         </div>
 
         {/* XP Progress Bar */}
@@ -109,11 +130,51 @@ export default function DailyAuraApp() {
         
         {activeTab === 'dashboard' && (
           <div className="space-y-4">
+            
+            {/* Add Custom Quest Form */}
+            <form onSubmit={addQuest} className="bg-[#121124] p-3.5 rounded-2xl border border-purple-900/30 space-y-3 shadow-lg">
+              <div className="flex gap-2">
+                <input 
+                  type="text"
+                  placeholder="Add a new side quest..."
+                  value={newQuestTitle}
+                  onChange={(e) => setNewQuestTitle(e.target.value)}
+                  className="flex-1 bg-black/50 border border-purple-950 rounded-xl px-3 py-2 text-sm text-white placeholder-purple-400/50 focus:outline-none focus:border-purple-600"
+                />
+                <button 
+                  type="submit"
+                  className="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1 shadow-lg shadow-purple-900/40 hover:opacity-90 active:scale-95 transition-all"
+                >
+                  <Plus size={14} /> Add
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <select 
+                  value={newQuestCategory}
+                  onChange={(e) => setNewQuestCategory(e.target.value)}
+                  className="bg-black/50 border border-purple-950 rounded-xl px-2 py-1.5 text-xs text-purple-300 focus:outline-none"
+                >
+                  <option value="Physical">Physical</option>
+                  <option value="Mental">Mental</option>
+                  <option value="Discipline">Discipline</option>
+                </select>
+                <select 
+                  value={newQuestXp}
+                  onChange={(e) => setNewQuestXp(e.target.value)}
+                  className="bg-black/50 border border-purple-950 rounded-xl px-2 py-1.5 text-xs text-purple-300 focus:outline-none"
+                >
+                  <option value="25">+25 XP</option>
+                  <option value="50">+50 XP</option>
+                  <option value="100">+100 XP</option>
+                </select>
+              </div>
+            </form>
+
             {/* Active Quests Section */}
             <div>
               <div className="flex justify-between items-center mb-3 px-1">
                 <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase">Active Quests</h2>
-                <span className="text-xs text-purple-400/80 font-medium">Complete tasks to gain XP</span>
+                <span className="text-xs text-purple-400/80 font-medium">{quests.filter(q => q.completed).length}/{quests.length} Completed</span>
               </div>
               
               <div className="space-y-3">
@@ -138,7 +199,15 @@ export default function DailyAuraApp() {
                         <span className="text-[10px] text-purple-300/80 font-semibold bg-purple-900/40 px-2 py-0.5 rounded-md border border-purple-800/30 mt-1 inline-block">{quest.category}</span>
                       </div>
                     </div>
-                    <span className="text-xs font-extrabold text-purple-300 bg-purple-950/80 px-2.5 py-1 rounded-xl border border-purple-800/40">+{quest.xp} XP</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-extrabold text-purple-300 bg-purple-950/80 px-2.5 py-1 rounded-xl border border-purple-800/40">+{quest.xp} XP</span>
+                      <button 
+                        onClick={(e) => deleteQuest(quest.id, e)}
+                        className="text-purple-500 hover:text-red-400 p-1 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -152,7 +221,6 @@ export default function DailyAuraApp() {
             <div className="bg-[#121124] p-6 rounded-2xl border border-purple-900/30 text-center py-12 shadow-xl">
               <Swords className="mx-auto text-purple-500 mb-3 animate-pulse" size={42} />
               <p className="text-purple-200 text-sm font-semibold">Global Hunter Board coming soon.</p>
-              <p className="text-xs text-purple-400/60 mt-1">Compete with other hunters worldwide.</p>
             </div>
           </div>
         )}
