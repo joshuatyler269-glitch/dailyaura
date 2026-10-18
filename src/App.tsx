@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, Sparkles, Trophy, Timer, Play, Square, CheckSquare, AlertOctagon } from 'lucide-react';
+import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, Sparkles, Trophy, Timer, Play, Square, CheckSquare, AlertOctagon, RefreshCw } from 'lucide-react';
 
 const QUEST_POOL = [
   { title: 'Morning Bodyweight Circuit (20 Pushups/Squats)', xp: 60, category: 'Physical', requiresSensor: true },
@@ -7,6 +7,7 @@ const QUEST_POOL = [
   { title: 'Drink 500ml Water Upon Waking', xp: 25, category: 'Health', requiresSensor: false },
   { title: '30 Minutes Deep Focus Code Session', xp: 100, category: 'Deep Work', requiresSensor: false },
   { title: 'Walk 10,000 Steps (itel / Smartwatch Sync)', xp: 80, category: 'Physical', requiresSensor: true },
+  { title: 'Review Termux Git Repos & Backup Code', xp: 50, category: 'Development', requiresSensor: false },
 ];
 
 export default function DailyAuraApp() {
@@ -31,21 +32,37 @@ export default function DailyAuraApp() {
       maxXp: 300,
       streak: 3,
       aura: 450,
-      status: 'Normal', // Can be 'Normal' or 'Debuff / Penalty Zone'
+      status: 'Normal',
       penaltyActive: false
     };
   });
 
+  // Robust Daily Rollover & Two-Box Quest Engine State
   const [quests, setQuests] = useState(() => {
-    const saved = localStorage.getItem('dailyaura_twobox_quests');
-    if (saved) return JSON.parse(saved);
-    
-    return [
-      { id: 1, title: 'Walk 10,000 Steps (Sensor Sync)', xp: 80, status: 'available', category: 'Physical', requiresSensor: true },
-      { id: 2, title: 'Complete 30 min deep focus work', xp: 100, status: 'active', category: 'Deep Work', requiresSensor: false },
-      { id: 3, title: 'Review daily goals & clear inbox', xp: 50, status: 'available', category: 'Strategy', requiresSensor: false },
-    ];
+    const todayStr = new Date().toDateString();
+    const savedDate = localStorage.getItem('dailyaura_quest_date');
+    const savedQuests = localStorage.getItem('dailyaura_twobox_quests');
+
+    if (savedDate !== todayStr || !savedQuests) {
+      const shuffled = [...QUEST_POOL].sort(() => 0.5 - Math.random());
+      const dailySelection = shuffled.slice(0, 4).map((q, idx) => ({
+        id: Date.now() + idx,
+        title: q.title,
+        xp: q.xp,
+        status: 'available', // 'available' -> 'active' -> 'completed'
+        category: q.category,
+        requiresSensor: q.requiresSensor
+      }));
+      localStorage.setItem('dailyaura_quest_date', todayStr);
+      localStorage.setItem('dailyaura_twobox_quests', JSON.stringify(dailySelection));
+      return dailySelection;
+    }
+
+    return JSON.parse(savedQuests);
   });
+
+  const [newQuestTitle, setNewQuestTitle] = useState('');
+  const [newQuestCategory, setNewQuestCategory] = useState('Discipline');
 
   const [isFocusActive, setIsFocusActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(1500);
@@ -57,7 +74,7 @@ export default function DailyAuraApp() {
     } else if (timeLeft === 0 && isFocusActive) {
       setIsFocusActive(false);
       triggerSystemAlert('[Dungeon Cleared!] +150 XP Awarded for Deep Focus.');
-      setHunter((prev: { xp: number; aura: number; penaltyActive: any; }) => ({ 
+      setHunter((prev: { xp: number; aura: number; }) => ({ 
         ...prev, 
         xp: prev.xp + 150, 
         aura: prev.aura + 50,
@@ -98,6 +115,10 @@ export default function DailyAuraApp() {
 
   const triggerSystemAlert = (msg: string) => {
     setNotification(msg);
+    // Trigger mobile browser vibration if supported (haptic feedback)
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -113,11 +134,13 @@ export default function DailyAuraApp() {
     localStorage.removeItem('dailyaura_auth');
   };
 
+  // Box 1: Accept contract into active log
   const acceptQuest = (id: number) => {
     setQuests(quests.map((q: { id: number; }) => q.id === id ? { ...q, status: 'active' } : q));
     triggerSystemAlert('[Contract Accepted] Quest added to active log.');
   };
 
+  // Box 2: Verify sensor / manual completion & grant reward
   const verifyAndCompleteQuest = (id: number) => {
     setQuests((prevQuests: any[]) => {
       return prevQuests.map(q => {
@@ -126,7 +149,6 @@ export default function DailyAuraApp() {
             triggerSystemAlert('[Telemetry Sync] Pinging itel Device / Smartwatch Sensors...');
           }
 
-          // If penalty is active, reduce XP gain by half as a debuff consequence
           const multiplier = hunter.penaltyActive ? 0.5 : 1.0;
           const finalXp = Math.floor(q.xp * multiplier);
 
@@ -164,6 +186,24 @@ export default function DailyAuraApp() {
     });
   };
 
+  const addCustomQuest = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newQuestTitle.trim()) return;
+
+    const customQuest = {
+      id: Date.now(),
+      title: newQuestTitle.trim(),
+      xp: 50,
+      status: 'active',
+      category: newQuestCategory,
+      requiresSensor: false
+    };
+
+    setQuests([customQuest, ...quests]);
+    setNewQuestTitle('');
+    triggerSystemAlert('[Custom Contract Generated & Active]');
+  };
+
   const triggerPenaltySimulation = () => {
     setHunter((prev: { penaltyActive: any; }) => ({
       ...prev,
@@ -184,7 +224,7 @@ export default function DailyAuraApp() {
         <div className="space-y-6 pt-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-700/50 text-purple-300 text-[10px] font-bold tracking-widest uppercase">
-              <Sparkles size={12} /> System v3.0 Online
+              <Sparkles size={12} /> System v3.2 Running Web App
             </div>
             <h1 className="text-3xl font-black tracking-tight leading-tight">
               Gamify Your Life.<br />
@@ -257,7 +297,6 @@ export default function DailyAuraApp() {
           </button>
         </div>
 
-        {/* PENALTY STATUS BANNER */}
         {hunter.penaltyActive && (
           <div className="bg-red-950/80 border border-red-600/60 p-2.5 rounded-xl mb-3 flex items-center justify-between text-xs text-red-200 animate-pulse">
             <span className="flex items-center gap-1.5 font-bold">
@@ -311,21 +350,30 @@ export default function DailyAuraApp() {
               </button>
             </div>
 
-            {/* Test Penalty Button */}
-            {!hunter.penaltyActive && (
-              <button 
-                onClick={triggerPenaltySimulation}
-                className="w-full py-2 bg-red-950/40 hover:bg-red-900/50 border border-red-900/50 rounded-xl text-xs font-bold text-red-300 transition-all flex items-center justify-center gap-1.5"
-              >
-                <AlertOctagon size={13} /> Test System Penalty Trigger
-              </button>
-            )}
+            {/* Custom Quest Form */}
+            <form onSubmit={addCustomQuest} className="bg-[#121124] p-3.5 rounded-2xl border border-purple-900/30 space-y-3 shadow-lg">
+              <div className="flex gap-2">
+                <input 
+                  type="text"
+                  placeholder="Add a custom personal quest..."
+                  value={newQuestTitle}
+                  onChange={(e) => setNewQuestTitle(e.target.value)}
+                  className="flex-1 bg-black/50 border border-purple-950 rounded-xl px-3 py-2 text-sm text-white placeholder-purple-400/50 focus:outline-none focus:border-purple-600"
+                />
+                <button 
+                  type="submit"
+                  className="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition-all flex items-center gap-1"
+                >
+                  <Plus size={14} /> Add
+                </button>
+              </div>
+            </form>
 
             {/* TWO-BOX WORKFLOW SECTION */}
             <div>
               <div className="flex justify-between items-center mb-3 px-1">
                 <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase flex items-center gap-1">
-                  <CheckSquare size={15} className="text-purple-400" /> Two-Box Quest Engine
+                  <CheckSquare size={15} className="text-purple-400" /> Automated Daily Quests (Two-Box)
                 </h2>
                 <span className="text-xs text-purple-400/80 font-medium">Accept & Verify</span>
               </div>
@@ -482,11 +530,4 @@ export default function DailyAuraApp() {
         <button onClick={() => setActiveTab('guild')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'guild' ? 'text-purple-400' : 'text-purple-500/60'}`}>
           <Swords size={20} /><span className="text-[10px] font-semibold">Guild Hall</span>
         </button>
-        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'profile' ? 'text-purple-400' : 'text-purple-500/60'}`}>
-          <User size={20} /><span className="text-[10px] font-semibold">Profile</span>
-        </button>
-      </nav>
-
-    </div>
-  );
-}
+        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 transition-colors
