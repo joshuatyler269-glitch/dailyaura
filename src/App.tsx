@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, Sparkles, Trophy, Timer, Play, Square } from 'lucide-react';
+import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, Sparkles, Trophy, Timer, Play, Square, RefreshCw, CheckSquare } from 'lucide-react';
+
+const QUEST_POOL = [
+  { title: 'Morning Bodyweight Circuit (20 Pushups/Squats)', xp: 60, category: 'Physical', requiresSensor: true },
+  { title: 'Read 15 Pages of a Non-Fiction Book', xp: 45, category: 'Mental', requiresSensor: false },
+  { title: 'Drink 500ml Water Upon Waking', xp: 25, category: 'Health', requiresSensor: false },
+  { title: '30 Minutes Deep Focus Code Session', xp: 100, category: 'Deep Work', requiresSensor: false },
+  { title: 'Walk 10,000 Steps (itel / Smartwatch Sync)', xp: 80, category: 'Physical', requiresSensor: true },
+];
 
 export default function DailyAuraApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -27,22 +35,20 @@ export default function DailyAuraApp() {
     };
   });
 
+  // Two-Box Quest State: 'available' -> 'active' -> 'completed'
   const [quests, setQuests] = useState(() => {
-    const saved = localStorage.getItem('dailyaura_quests');
-    return saved ? JSON.parse(saved) : [
-      { id: 1, title: 'Complete 30 min deep focus work', xp: 100, completed: false, category: 'Deep Work' },
-      { id: 2, title: 'Hydrate & step away from screen', xp: 30, completed: false, category: 'Health' },
-      { id: 3, title: 'Review daily goals & clear inbox', xp: 50, completed: false, category: 'Strategy' },
+    const saved = localStorage.getItem('dailyaura_twobox_quests');
+    if (saved) return JSON.parse(saved);
+    
+    return [
+      { id: 1, title: 'Walk 10,000 Steps (Sensor Sync)', xp: 80, status: 'available', category: 'Physical', requiresSensor: true },
+      { id: 2, title: 'Complete 30 min deep focus work', xp: 100, status: 'active', category: 'Deep Work', requiresSensor: false },
+      { id: 3, title: 'Review daily goals & clear inbox', xp: 50, status: 'available', category: 'Strategy', requiresSensor: false },
     ];
   });
 
-  const [newQuestTitle, setNewQuestTitle] = useState('');
-  const [newQuestXp, setNewQuestXp] = useState('50');
-  const [newQuestCategory, setNewQuestCategory] = useState('Discipline');
-
-  // Focus Timer State
   const [isFocusActive, setIsFocusActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(1500); // 25 minutes default
+  const [timeLeft, setTimeLeft] = useState(1500);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -67,7 +73,6 @@ export default function DailyAuraApp() {
     { id: 1, name: 'Shadow Monarch (You)', level: hunter.level, rank: hunter.rank, aura: hunter.aura, active: true },
     { id: 2, name: 'Jin-Woo', level: 12, rank: 'S-Rank Hunter', aura: 3420, active: false },
     { id: 3, name: 'Cha Hae-In', level: 9, rank: 'A-Rank Hunter', aura: 2890, active: true },
-    { id: 4, name: 'Baek Yoonho', level: 7, rank: 'B-Rank Hunter', aura: 1950, active: false },
   ]);
 
   const [heatmap] = useState([
@@ -82,7 +87,7 @@ export default function DailyAuraApp() {
   }, [hunter]);
 
   useEffect(() => {
-    localStorage.setItem('dailyaura_quests', JSON.stringify(quests));
+    localStorage.setItem('dailyaura_twobox_quests', JSON.stringify(quests));
   }, [quests]);
 
   const triggerSystemAlert = (msg: string) => {
@@ -102,18 +107,26 @@ export default function DailyAuraApp() {
     localStorage.removeItem('dailyaura_auth');
   };
 
-  const toggleQuest = (id: number) => {
-    setQuests(prevQuests => {
+  // Box 1: Accept contract into active log
+  const acceptQuest = (id: number) => {
+    setQuests(quests.map((q: { id: number; }) => q.id === id ? { ...q, status: 'active' } : q));
+    triggerSystemAlert('[Contract Accepted] Quest added to active log.');
+  };
+
+  // Box 2: Verify sensor / manual completion & grant reward
+  const verifyAndCompleteQuest = (id: number) => {
+    setQuests((prevQuests: any[]) => {
       return prevQuests.map(q => {
         if (q.id === id) {
-          const newCompleted = !q.completed;
-          const xpChange = newCompleted ? q.xp : -q.xp;
-          
-          if (newCompleted) {
-            triggerSystemAlert(`[Quest Cleared] +${q.xp} XP Gained!`);
+          // If sensor-based, simulate telemetry check (e.g. checking itel device steps / pulse API)
+          if (q.requiresSensor) {
+            triggerSystemAlert('[Telemetry Sync] Pinging itel Device / Smartwatch Sensors...');
           }
 
-          setHunter(prevHunter => {
+          const xpChange = q.xp;
+          triggerSystemAlert(`[Quest Cleared] +${q.xp} XP Verified & Claimed!`);
+
+          setHunter((prevHunter: { xp: number; level: any; maxXp: any; rank: any; aura: number; }) => {
             let updatedXp = prevHunter.xp + xpChange;
             let updatedLevel = prevHunter.level;
             let updatedMaxXp = prevHunter.maxXp;
@@ -124,11 +137,9 @@ export default function DailyAuraApp() {
               updatedLevel += 1;
               updatedMaxXp += 200;
               triggerSystemAlert(`[LEVEL UP!] You have reached Level ${updatedLevel}!`);
-              
               if (updatedLevel >= 3) updatedRank = 'D-Rank Hunter';
               if (updatedLevel >= 5) updatedRank = 'C-Rank Hunter';
             }
-            if (updatedXp < 0) updatedXp = 0;
 
             return { 
               ...prevHunter, 
@@ -136,37 +147,20 @@ export default function DailyAuraApp() {
               level: updatedLevel, 
               maxXp: updatedMaxXp,
               rank: updatedRank,
-              aura: prevHunter.aura + (newCompleted ? 25 : -25)
+              aura: prevHunter.aura + 25
             };
           });
 
-          return { ...q, completed: newCompleted };
+          return { ...q, status: 'completed' };
         }
         return q;
       });
     });
   };
 
-  const addQuest = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newQuestTitle.trim()) return;
-
-    const newQuest = {
-      id: Date.now(),
-      title: newQuestTitle.trim(),
-      xp: parseInt(newQuestXp) || 50,
-      completed: false,
-      category: newQuestCategory
-    };
-
-    setQuests([newQuest, ...quests]);
-    setNewQuestTitle('');
-    triggerSystemAlert('[New Quest Generated]');
-  };
-
   const deleteQuest = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setQuests(quests.filter(q => q.id !== id));
+    setQuests(quests.filter((q: { id: number; }) => q.id !== id));
   };
 
   if (!isAuthenticated) {
@@ -175,7 +169,7 @@ export default function DailyAuraApp() {
         <div className="space-y-6 pt-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-700/50 text-purple-300 text-[10px] font-bold tracking-widest uppercase">
-              <Sparkles size={12} /> System v2.5 Online
+              <Sparkles size={12} /> System v2.8 Online
             </div>
             <h1 className="text-3xl font-black tracking-tight leading-tight">
               Gamify Your Life.<br />
@@ -183,40 +177,9 @@ export default function DailyAuraApp() {
                 Conquer Procrastination.
               </span>
             </h1>
-            <p className="text-xs text-purple-300/80 leading-relaxed pt-1">
-              Transform daily tasks into RPG quests, earn experience points, level up your consistency, and keep phone addiction in check with built-in session guardians.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-[#121124] p-3.5 rounded-2xl border border-purple-900/30 shadow-lg">
-              <h3 className="text-sm font-bold text-fuchsia-400 mb-1">RPG Stats</h3>
-              <p className="text-[11px] text-purple-300/70">Level progression & XP rewards for every task.</p>
-            </div>
-            <div className="bg-[#121124] p-3.5 rounded-2xl border border-purple-900/30 shadow-lg">
-              <h3 className="text-sm font-bold text-amber-400 mb-1">Session Guard</h3>
-              <p className="text-[11px] text-purple-300/70">Break free from excessive phone and gaming loops.</p>
-            </div>
           </div>
 
           <div className="bg-[#121124] p-5 rounded-3xl border border-purple-900/40 shadow-xl space-y-4">
-            <div className="flex bg-black/50 p-1 rounded-2xl border border-purple-950">
-              <button 
-                type="button"
-                onClick={() => setAuthMode('signup')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${authMode === 'signup' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-400'}`}
-              >
-                Create Account
-              </button>
-              <button 
-                type="button"
-                onClick={() => setAuthMode('signin')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${authMode === 'signin' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-400'}`}
-              >
-                Sign In
-              </button>
-            </div>
-
             <form onSubmit={handleAuthSubmit} className="space-y-3.5">
               <div>
                 <label className="block text-[10px] uppercase font-bold tracking-wider text-purple-400 mb-1">Email Address</label>
@@ -228,7 +191,6 @@ export default function DailyAuraApp() {
                   className="w-full bg-black/60 border border-purple-950 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-600"
                 />
               </div>
-
               <div>
                 <label className="block text-[10px] uppercase font-bold tracking-wider text-purple-400 mb-1">Password</label>
                 <input 
@@ -239,19 +201,14 @@ export default function DailyAuraApp() {
                   className="w-full bg-black/60 border border-purple-950 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-600"
                 />
               </div>
-
               <button 
                 type="submit"
-                className="w-full bg-gradient-to-r from-purple-600 via-fuchsia-600 to-purple-500 text-white py-3 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-900/50 hover:opacity-95 active:scale-[0.98] transition-all"
+                className="w-full bg-gradient-to-r from-purple-600 via-fuchsia-600 to-purple-500 text-white py-3 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-900/50"
               >
-                {authMode === 'signup' ? 'Initialize Hero Account' : 'Enter Hunter Realm'}
+                Enter Hunter Realm
               </button>
             </form>
           </div>
-        </div>
-
-        <div className="text-center pb-2">
-          <p className="text-[11px] text-purple-400/60">Start your consistency streak today.</p>
         </div>
       </div>
     );
@@ -275,9 +232,7 @@ export default function DailyAuraApp() {
                 LVL {hunter.level}
               </span>
             </div>
-            <h1 className="text-lg font-black tracking-wide text-white mt-1">
-              {email.split('@')[0]} 
-            </h1>
+            <h1 className="text-lg font-black tracking-wide text-white mt-1">{email.split('@')[0]}</h1>
           </div>
           <button 
             onClick={handleSignOut}
@@ -306,7 +261,7 @@ export default function DailyAuraApp() {
         {activeTab === 'dashboard' && (
           <div className="space-y-4">
             
-            {/* Focus Dungeon Timer Widget */}
+            {/* Focus Timer Widget */}
             <div className="bg-gradient-to-br from-purple-950/50 via-[#121124] to-black p-4 rounded-2xl border border-purple-800/40 shadow-xl flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
@@ -321,9 +276,7 @@ export default function DailyAuraApp() {
                   triggerSystemAlert(isFocusActive ? 'Dungeon Paused.' : 'Dungeon Gate Opened: Focus Active.');
                 }}
                 className={`px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-lg transition-all ${
-                  isFocusActive 
-                    ? 'bg-amber-600 text-white hover:bg-amber-500 shadow-amber-900/40' 
-                    : 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-purple-900/50'
+                  isFocusActive ? 'bg-amber-600 text-white' : 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white'
                 }`}
               >
                 {isFocusActive ? <Square size={14} /> : <Play size={14} />}
@@ -331,66 +284,93 @@ export default function DailyAuraApp() {
               </button>
             </div>
 
-            <form onSubmit={addQuest} className="bg-[#121124] p-3.5 rounded-2xl border border-purple-900/30 space-y-3 shadow-lg">
-              <div className="flex gap-2">
-                <input 
-                  type="text"
-                  placeholder="Add a new side quest..."
-                  value={newQuestTitle}
-                  onChange={(e) => setNewQuestTitle(e.target.value)}
-                  className="flex-1 bg-black/50 border border-purple-950 rounded-xl px-3 py-2 text-sm text-white placeholder-purple-400/50 focus:outline-none focus:border-purple-600"
-                />
-                <button 
-                  type="submit"
-                  className="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1 shadow-lg shadow-purple-900/40 hover:opacity-90 active:scale-95 transition-all"
-                >
-                  <Plus size={14} /> Add Quest
-                </button>
-              </div>
-            </form>
-
+            {/* TWO-BOX WORKFLOW SECTION */}
             <div>
               <div className="flex justify-between items-center mb-3 px-1">
-                <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase">Active Quests</h2>
-                <span className="text-xs text-purple-400/80 font-medium">{quests.filter(q => q.completed).length}/{quests.length} Completed</span>
+                <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase flex items-center gap-1">
+                  <CheckSquare size={15} className="text-purple-400" /> Two-Box Quest Engine
+                </h2>
+                <span className="text-xs text-purple-400/80 font-medium">Accept & Verify</span>
               </div>
               
               <div className="space-y-3">
-                {quests.map(quest => (
+                {quests.map((quest: any) => (
                   <div 
                     key={quest.id}
-                    onClick={() => toggleQuest(quest.id)}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between shadow-lg ${
-                      quest.completed 
-                        ? 'bg-purple-950/40 border-purple-500/50 text-purple-200' 
-                        : 'bg-[#121124] border-purple-900/30 text-white hover:border-purple-700/50'
+                    className={`p-4 rounded-2xl border transition-all flex flex-col gap-3 shadow-lg ${
+                      quest.status === 'completed' 
+                        ? 'bg-purple-950/30 border-purple-500/30 text-purple-300 opacity-75' 
+                        : quest.status === 'active'
+                        ? 'bg-[#15132d] border-purple-500/60 text-white'
+                        : 'bg-[#121124] border-purple-900/30 text-purple-200'
                     }`}
                   >
-                    <div className="flex items-center gap-3.5">
-                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center border transition-all ${
-                        quest.completed ? 'bg-purple-600 border-purple-400 text-white shadow-[0_0_8px_rgba(168,85,247,0.6)]' : 'border-purple-800/80 bg-black/40'
-                      }`}>
-                        {quest.completed && <CheckCircle size={15} className="stroke-[3]" />}
-                      </div>
+                    <div className="flex items-center justify-between">
                       <div>
-                        <p className={`text-sm font-medium ${quest.completed ? 'line-through text-purple-400' : 'text-white'}`}>{quest.title}</p>
-                        <span className="text-[10px] text-purple-300/80 font-semibold bg-purple-900/40 px-2 py-0.5 rounded-md border border-purple-800/30 mt-1 inline-block">{quest.category}</span>
+                        <p className={`text-sm font-medium ${quest.status === 'completed' ? 'line-through text-purple-400' : 'text-white'}`}>
+                          {quest.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-purple-300 font-semibold bg-purple-900/40 px-2 py-0.5 rounded border border-purple-800/30">
+                            {quest.category}
+                          </span>
+                          {quest.requiresSensor && (
+                            <span className="text-[9px] text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/40">
+                              itel / Sensor Verified
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      <span className="text-xs font-extrabold text-purple-300 bg-purple-950/80 px-2.5 py-1 rounded-xl border border-purple-800/40">
+                        +{quest.xp} XP
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-extrabold text-purple-300 bg-purple-950/80 px-2.5 py-1 rounded-xl border border-purple-800/40">+{quest.xp} XP</span>
-                      <button 
-                        onClick={(e) => deleteQuest(quest.id, e)}
-                        className="text-purple-500 hover:text-red-400 p-1 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+
+                    {/* BOX 1 & BOX 2 BUTTON CONTROLS */}
+                    <div className="flex items-center justify-between pt-2 border-t border-purple-900/30">
+                      <span className="text-[10px] uppercase font-bold tracking-widest text-purple-400">
+                        Status: <span className="text-white">{quest.status}</span>
+                      </span>
+
+                      <div className="flex gap-2">
+                        {quest.status === 'available' && (
+                          <button 
+                            onClick={() => acceptQuest(quest.id)}
+                            className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow transition-all"
+                          >
+                            Box 1: Accept Contract
+                          </button>
+                        )}
+
+                        {quest.status === 'active' && (
+                          <button 
+                            onClick={() => verifyAndCompleteQuest(quest.id)}
+                            className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow transition-all flex items-center gap-1"
+                          >
+                            <CheckCircle size={13} /> Box 2: Verify & Claim
+                          </button>
+                        )}
+
+                        {quest.status === 'completed' && (
+                          <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                            <CheckCircle size={14} /> Cleared
+                          </span>
+                        )}
+
+                        <button 
+                          onClick={(e) => deleteQuest(quest.id, e)}
+                          className="text-purple-500 hover:text-red-400 p-1 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
+            {/* Consistency Heatmap Card */}
             <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 shadow-xl space-y-3 mt-4">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
@@ -398,7 +378,6 @@ export default function DailyAuraApp() {
                 </span>
                 <span className="text-[10px] text-purple-400/70">Past 4 Weeks</span>
               </div>
-              
               <div className="grid grid-cols-7 gap-2 pt-1">
                 {heatmap.map((intensity, idx) => {
                   const bgColors = [
@@ -407,12 +386,7 @@ export default function DailyAuraApp() {
                     'bg-purple-700/60 border-purple-600/50',
                     'bg-fuchsia-500 border-fuchsia-400 shadow-[0_0_6px_rgba(217,70,239,0.5)]'
                   ];
-                  return (
-                    <div 
-                      key={idx} 
-                      className={`h-7 rounded-lg border transition-all ${bgColors[intensity]}`}
-                    ></div>
-                  );
+                  return <div key={idx} className={`h-7 rounded-lg border transition-all ${bgColors[intensity]}`}></div>;
                 })}
               </div>
             </div>
@@ -422,96 +396,16 @@ export default function DailyAuraApp() {
 
         {activeTab === 'guild' && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center px-1">
-              <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase flex items-center gap-1.5">
-                <Trophy size={16} className="text-amber-400" /> Guild Hall Leaderboard
-              </h2>
-              <span className="text-[10px] bg-purple-950 text-purple-300 px-2 py-0.5 rounded-full border border-purple-800/50">Global</span>
-            </div>
-
+            <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase flex items-center gap-1.5">
+              <Trophy size={16} className="text-amber-400" /> Guild Hall Leaderboard
+            </h2>
             <div className="space-y-2.5">
               {guildMembers.map((member, index) => (
-                <div 
-                  key={member.id}
-                  className={`p-3.5 rounded-2xl border flex items-center justify-between shadow-lg ${
-                    index === 0 
-                      ? 'bg-gradient-to-r from-purple-950/60 to-[#121124] border-purple-500/60 shadow-[0_0_12px_rgba(168,85,247,0.3)]' 
-                      : 'bg-[#121124] border-purple-900/30'
-                  }`}
-                >
+                <div key={member.id} className="p-3.5 rounded-2xl border bg-[#121124] border-purple-900/30 flex items-center justify-between shadow-lg">
                   <div className="flex items-center gap-3">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
-                      index === 0 ? 'bg-amber-400 text-slate-950' : 'bg-purple-950 text-purple-300 border border-purple-800'
-                    }`}>
+                    <span className="w-6 h-6 rounded-full bg-purple-950 text-purple-300 border border-purple-800 flex items-center justify-center text-xs font-black">
                       {index + 1}
                     </span>
                     <div>
-                      <p className="text-xs font-bold text-white flex items-center gap-1.5">
-                        {member.name} {index === 0 && <span className="text-[9px] bg-purple-600 text-white px-1.5 py-0.2 rounded">YOU</span>}
-                      </p>
-                      <span className="text-[10px] text-purple-300/70">{member.rank} • Lv.{index === 0 ? hunter.level : member.level}</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-extrabold text-fuchsia-400">{index === 0 ? hunter.aura : member.aura} Aura</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'profile' && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase">Hunter Profile</h2>
-            
-            <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 space-y-3 shadow-xl">
-              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
-                <span className="text-purple-400">Hunter Account</span>
-                <span className="font-bold text-white">{email}</span>
-              </div>
-              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
-                <span className="text-purple-400">Current Rank</span>
-                <span className="font-bold text-purple-300">{hunter.rank}</span>
-              </div>
-              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
-                <span className="text-purple-400">Active Streak</span>
-                <span className="font-bold text-amber-400 flex items-center gap-1"><Flame size={14} /> {hunter.streak} Days</span>
-              </div>
-              <div className="flex justify-between py-2.5 text-sm">
-                <span className="text-purple-400">Total Aura Points</span>
-                <span className="font-bold text-fuchsia-400">{hunter.aura}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </main>
-
-      <nav className="absolute bottom-0 left-0 right-0 bg-[#090a16]/95 backdrop-blur border-t border-purple-900/30 flex justify-around p-3 z-10 shadow-2xl">
-        <button 
-          onClick={() => setActiveTab('dashboard')}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'text-purple-500/60 hover:text-purple-300'}`}
-        >
-          <Shield size={20} />
-          <span className="text-[10px] font-semibold">Dashboard</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('guild')}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'guild' ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'text-purple-500/60 hover:text-purple-300'}`}
-        >
-          <Swords size={20} />
-          <span className="text-[10px] font-semibold">Guild Hall</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'profile' ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'text-purple-500/60 hover:text-purple-300'}`}
-        >
-          <User size={20} />
-          <span className="text-[10px] font-semibold">Profile</span>
-        </button>
-      </nav>
-
-    </div>
-  );
-}
+                      <p className="text-xs font-bold text-white">{member.name}</p>
+                      <span className="text-[10px] text-purple-300/70">{member.rank} • Lv.{
