@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, Sparkles, Users, Trophy } from 'lucide-react';
+import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, Sparkles, Trophy, Timer, Play, Square } from 'lucide-react';
 
 export default function DailyAuraApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -40,7 +40,29 @@ export default function DailyAuraApp() {
   const [newQuestXp, setNewQuestXp] = useState('50');
   const [newQuestCategory, setNewQuestCategory] = useState('Discipline');
 
-  // Guild leaderboard mock data
+  // Focus Timer State
+  const [isFocusActive, setIsFocusActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(1500); // 25 minutes default
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isFocusActive && timeLeft > 0) {
+      timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
+    } else if (timeLeft === 0 && isFocusActive) {
+      setIsFocusActive(false);
+      triggerSystemAlert('[Dungeon Cleared!] +150 XP Awarded for Deep Focus.');
+      setHunter(prev => ({ ...prev, xp: prev.xp + 150, aura: prev.aura + 50 }));
+      setTimeLeft(1500);
+    }
+    return () => clearInterval(timer);
+  }, [isFocusActive, timeLeft]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const [guildMembers] = useState([
     { id: 1, name: 'Shadow Monarch (You)', level: hunter.level, rank: hunter.rank, aura: hunter.aura, active: true },
     { id: 2, name: 'Jin-Woo', level: 12, rank: 'S-Rank Hunter', aura: 3420, active: false },
@@ -238,14 +260,12 @@ export default function DailyAuraApp() {
   return (
     <div style={{ backgroundColor: '#090a16', color: '#ffffff' }} className="min-h-screen bg-[#090a16] text-white flex flex-col max-w-md mx-auto relative pb-24 shadow-2xl border-x border-purple-950/40">
       
-      {/* System Notification Popup */}
       {notification && (
         <div className="absolute top-4 left-4 right-4 z-50 bg-purple-900/90 border border-purple-400 text-purple-100 px-4 py-3 rounded-2xl shadow-[0_0_20px_rgba(168,85,247,0.6)] backdrop-blur text-xs font-bold text-center animate-bounce">
           {notification}
         </div>
       )}
 
-      {/* Top Header */}
       <header className="p-4 bg-gradient-to-br from-[#13112a] via-[#1a1638] to-[#090a16] backdrop-blur border-b border-purple-900/30 sticky top-0 z-10 shadow-lg">
         <div className="flex justify-between items-center mb-3">
           <div>
@@ -267,7 +287,6 @@ export default function DailyAuraApp() {
           </button>
         </div>
 
-        {/* XP Progress Bar */}
         <div className="bg-[#0b0c1c] p-3 rounded-2xl border border-purple-900/40 shadow-inner mt-2">
           <div className="flex justify-between text-xs mb-1.5 font-medium">
             <span className="text-purple-300 flex items-center gap-1"><Zap size={13} className="text-purple-400" /> XP Progress</span>
@@ -282,13 +301,36 @@ export default function DailyAuraApp() {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-1 p-4 overflow-y-auto space-y-4">
         
         {activeTab === 'dashboard' && (
           <div className="space-y-4">
             
-            {/* Add Custom Quest Form */}
+            {/* Focus Dungeon Timer Widget */}
+            <div className="bg-gradient-to-br from-purple-950/50 via-[#121124] to-black p-4 rounded-2xl border border-purple-800/40 shadow-xl flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                  <Timer size={13} /> Session Guard / Focus Dungeon
+                </span>
+                <h3 className="text-2xl font-black text-white mt-1 tracking-wider">{formatTime(timeLeft)}</h3>
+                <p className="text-[10px] text-purple-300/70">Clear dungeon to earn +150 XP</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsFocusActive(!isFocusActive);
+                  triggerSystemAlert(isFocusActive ? 'Dungeon Paused.' : 'Dungeon Gate Opened: Focus Active.');
+                }}
+                className={`px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-lg transition-all ${
+                  isFocusActive 
+                    ? 'bg-amber-600 text-white hover:bg-amber-500 shadow-amber-900/40' 
+                    : 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-purple-900/50'
+                }`}
+              >
+                {isFocusActive ? <Square size={14} /> : <Play size={14} />}
+                {isFocusActive ? 'Pause' : 'Enter Gate'}
+              </button>
+            </div>
+
             <form onSubmit={addQuest} className="bg-[#121124] p-3.5 rounded-2xl border border-purple-900/30 space-y-3 shadow-lg">
               <div className="flex gap-2">
                 <input 
@@ -307,7 +349,6 @@ export default function DailyAuraApp() {
               </div>
             </form>
 
-            {/* Active Quests Section */}
             <div>
               <div className="flex justify-between items-center mb-3 px-1">
                 <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase">Active Quests</h2>
@@ -350,7 +391,6 @@ export default function DailyAuraApp() {
               </div>
             </div>
 
-            {/* Consistency Heatmap Card */}
             <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 shadow-xl space-y-3 mt-4">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
@@ -401,4 +441,77 @@ export default function DailyAuraApp() {
                 >
                   <div className="flex items-center gap-3">
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
-                      index === 0 ? 'bg-amber-400 text-slate-950'
+                      index === 0 ? 'bg-amber-400 text-slate-950' : 'bg-purple-950 text-purple-300 border border-purple-800'
+                    }`}>
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                        {member.name} {index === 0 && <span className="text-[9px] bg-purple-600 text-white px-1.5 py-0.2 rounded">YOU</span>}
+                      </p>
+                      <span className="text-[10px] text-purple-300/70">{member.rank} • Lv.{index === 0 ? hunter.level : member.level}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-extrabold text-fuchsia-400">{index === 0 ? hunter.aura : member.aura} Aura</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="space-y-4">
+            <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase">Hunter Profile</h2>
+            
+            <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 space-y-3 shadow-xl">
+              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
+                <span className="text-purple-400">Hunter Account</span>
+                <span className="font-bold text-white">{email}</span>
+              </div>
+              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
+                <span className="text-purple-400">Current Rank</span>
+                <span className="font-bold text-purple-300">{hunter.rank}</span>
+              </div>
+              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
+                <span className="text-purple-400">Active Streak</span>
+                <span className="font-bold text-amber-400 flex items-center gap-1"><Flame size={14} /> {hunter.streak} Days</span>
+              </div>
+              <div className="flex justify-between py-2.5 text-sm">
+                <span className="text-purple-400">Total Aura Points</span>
+                <span className="font-bold text-fuchsia-400">{hunter.aura}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      <nav className="absolute bottom-0 left-0 right-0 bg-[#090a16]/95 backdrop-blur border-t border-purple-900/30 flex justify-around p-3 z-10 shadow-2xl">
+        <button 
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'text-purple-500/60 hover:text-purple-300'}`}
+        >
+          <Shield size={20} />
+          <span className="text-[10px] font-semibold">Dashboard</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('guild')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'guild' ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'text-purple-500/60 hover:text-purple-300'}`}
+        >
+          <Swords size={20} />
+          <span className="text-[10px] font-semibold">Guild Hall</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('profile')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'profile' ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'text-purple-500/60 hover:text-purple-300'}`}
+        >
+          <User size={20} />
+          <span className="text-[10px] font-semibold">Profile</span>
+        </button>
+      </nav>
+
+    </div>
+  );
+}
