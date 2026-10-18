@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, AlertTriangle, Sparkles } from 'lucide-react';
+import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, Sparkles, Users, Trophy } from 'lucide-react';
 
 export default function DailyAuraApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -39,6 +39,14 @@ export default function DailyAuraApp() {
   const [newQuestTitle, setNewQuestTitle] = useState('');
   const [newQuestXp, setNewQuestXp] = useState('50');
   const [newQuestCategory, setNewQuestCategory] = useState('Discipline');
+
+  // Guild leaderboard mock data
+  const [guildMembers] = useState([
+    { id: 1, name: 'Shadow Monarch (You)', level: hunter.level, rank: hunter.rank, aura: hunter.aura, active: true },
+    { id: 2, name: 'Jin-Woo', level: 12, rank: 'S-Rank Hunter', aura: 3420, active: false },
+    { id: 3, name: 'Cha Hae-In', level: 9, rank: 'A-Rank Hunter', aura: 2890, active: true },
+    { id: 4, name: 'Baek Yoonho', level: 7, rank: 'B-Rank Hunter', aura: 1950, active: false },
+  ]);
 
   const [heatmap] = useState([
     1, 2, 0, 3, 2, 1, 3,
@@ -230,7 +238,7 @@ export default function DailyAuraApp() {
   return (
     <div style={{ backgroundColor: '#090a16', color: '#ffffff' }} className="min-h-screen bg-[#090a16] text-white flex flex-col max-w-md mx-auto relative pb-24 shadow-2xl border-x border-purple-950/40">
       
-      {/* System Hologram Notification Popup */}
+      {/* System Notification Popup */}
       {notification && (
         <div className="absolute top-4 left-4 right-4 z-50 bg-purple-900/90 border border-purple-400 text-purple-100 px-4 py-3 rounded-2xl shadow-[0_0_20px_rgba(168,85,247,0.6)] backdrop-blur text-xs font-bold text-center animate-bounce">
           {notification}
@@ -342,7 +350,7 @@ export default function DailyAuraApp() {
               </div>
             </div>
 
-            {/* Consistency Heatmap Card on Dashboard */}
+            {/* Consistency Heatmap Card */}
             <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 shadow-xl space-y-3 mt-4">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
@@ -374,54 +382,23 @@ export default function DailyAuraApp() {
 
         {activeTab === 'guild' && (
           <div className="space-y-4">
-            <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase">Guild Hall</h2>
-            <div className="bg-[#121124] p-6 rounded-2xl border border-purple-900/30 text-center py-12 shadow-xl">
-              <Swords className="mx-auto text-purple-500 mb-3 animate-pulse" size={42} />
-              <p className="text-purple-200 text-sm font-semibold">Global Hunter Board coming soon.</p>
+            <div className="flex justify-between items-center px-1">
+              <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase flex items-center gap-1.5">
+                <Trophy size={16} className="text-amber-400" /> Guild Hall Leaderboard
+              </h2>
+              <span className="text-[10px] bg-purple-950 text-purple-300 px-2 py-0.5 rounded-full border border-purple-800/50">Global</span>
             </div>
-          </div>
-        )}
 
-        {activeTab === 'profile' && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase">Hunter Profile</h2>
-            
-            <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 space-y-3 shadow-xl">
-              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
-                <span className="text-purple-400">Hunter Account</span>
-                <span className="font-bold text-white">{email}</span>
-              </div>
-              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
-                <span className="text-purple-400">Current Rank</span>
-                <span className="font-bold text-purple-300">{hunter.rank}</span>
-              </div>
-              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
-                <span className="text-purple-400">Active Streak</span>
-                <span className="font-bold text-amber-400 flex items-center gap-1"><Flame size={14} /> {hunter.streak} Days</span>
-              </div>
-              <div className="flex justify-between py-2.5 text-sm">
-                <span className="text-purple-400">Total Aura Points</span>
-                <span className="font-bold text-fuchsia-400">{hunter.aura}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </main>
-
-      {/* Bottom Navigation Bar */}
-      <nav className="absolute bottom-0 left-0 right-0 bg-[#090a16]/95 backdrop-blur border-t border-purple-900/30 flex justify-around p-3 z-10 shadow-2xl">
-        <button 
-          onClick={() => setActiveTab('dashboard')}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'text-purple-500/60 hover:text-purple-300'}`}
-        >
-          <Shield size={20} />
-          <span className="text-[10px] font-semibold">Dashboard</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('guild')}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'guild' ? 'text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]' : 'text-purple-500/60 hover:text-purple-300'}`}
-        >
-          <Swords size={20} />
-          <span className="text-[10px] font-semibold">Guild Hall</span>
-     
+            <div className="space-y-2.5">
+              {guildMembers.map((member, index) => (
+                <div 
+                  key={member.id}
+                  className={`p-3.5 rounded-2xl border flex items-center justify-between shadow-lg ${
+                    index === 0 
+                      ? 'bg-gradient-to-r from-purple-950/60 to-[#121124] border-purple-500/60 shadow-[0_0_12px_rgba(168,85,247,0.3)]' 
+                      : 'bg-[#121124] border-purple-900/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
+                      index === 0 ? 'bg-amber-400 text-slate-950'
