@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, Sparkles, Trophy, Timer, Play, Square, RefreshCw, CheckSquare } from 'lucide-react';
+import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, Sparkles, Trophy, Timer, Play, Square, CheckSquare, AlertOctagon } from 'lucide-react';
 
 const QUEST_POOL = [
   { title: 'Morning Bodyweight Circuit (20 Pushups/Squats)', xp: 60, category: 'Physical', requiresSensor: true },
@@ -31,11 +31,11 @@ export default function DailyAuraApp() {
       maxXp: 300,
       streak: 3,
       aura: 450,
-      status: 'Focused'
+      status: 'Normal', // Can be 'Normal' or 'Debuff / Penalty Zone'
+      penaltyActive: false
     };
   });
 
-  // Two-Box Quest State: 'available' -> 'active' -> 'completed'
   const [quests, setQuests] = useState(() => {
     const saved = localStorage.getItem('dailyaura_twobox_quests');
     if (saved) return JSON.parse(saved);
@@ -57,11 +57,17 @@ export default function DailyAuraApp() {
     } else if (timeLeft === 0 && isFocusActive) {
       setIsFocusActive(false);
       triggerSystemAlert('[Dungeon Cleared!] +150 XP Awarded for Deep Focus.');
-      setHunter(prev => ({ ...prev, xp: prev.xp + 150, aura: prev.aura + 50 }));
+      setHunter((prev: { xp: number; aura: number; penaltyActive: any; }) => ({ 
+        ...prev, 
+        xp: prev.xp + 150, 
+        aura: prev.aura + 50,
+        status: 'Normal',
+        penaltyActive: false
+      }));
       setTimeLeft(1500);
     }
     return () => clearInterval(timer);
-  }, [isFocusActive, timeLeft]);
+  }, [isFocusActive]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -107,27 +113,27 @@ export default function DailyAuraApp() {
     localStorage.removeItem('dailyaura_auth');
   };
 
-  // Box 1: Accept contract into active log
   const acceptQuest = (id: number) => {
     setQuests(quests.map((q: { id: number; }) => q.id === id ? { ...q, status: 'active' } : q));
     triggerSystemAlert('[Contract Accepted] Quest added to active log.');
   };
 
-  // Box 2: Verify sensor / manual completion & grant reward
   const verifyAndCompleteQuest = (id: number) => {
     setQuests((prevQuests: any[]) => {
       return prevQuests.map(q => {
         if (q.id === id) {
-          // If sensor-based, simulate telemetry check (e.g. checking itel device steps / pulse API)
           if (q.requiresSensor) {
             triggerSystemAlert('[Telemetry Sync] Pinging itel Device / Smartwatch Sensors...');
           }
 
-          const xpChange = q.xp;
-          triggerSystemAlert(`[Quest Cleared] +${q.xp} XP Verified & Claimed!`);
+          // If penalty is active, reduce XP gain by half as a debuff consequence
+          const multiplier = hunter.penaltyActive ? 0.5 : 1.0;
+          const finalXp = Math.floor(q.xp * multiplier);
+
+          triggerSystemAlert(`[Quest Cleared] +${finalXp} XP Verified & Claimed!`);
 
           setHunter((prevHunter: { xp: number; level: any; maxXp: any; rank: any; aura: number; }) => {
-            let updatedXp = prevHunter.xp + xpChange;
+            let updatedXp = prevHunter.xp + finalXp;
             let updatedLevel = prevHunter.level;
             let updatedMaxXp = prevHunter.maxXp;
             let updatedRank = prevHunter.rank;
@@ -158,6 +164,15 @@ export default function DailyAuraApp() {
     });
   };
 
+  const triggerPenaltySimulation = () => {
+    setHunter((prev: { penaltyActive: any; }) => ({
+      ...prev,
+      penaltyActive: !prev.penaltyActive,
+      status: !prev.penaltyActive ? 'PENALTY ZONE (Debuff Active)' : 'Normal'
+    }));
+    triggerSystemAlert(!hunter.penaltyActive ? '[WARNING] System Penalty Triggered! XP gains halved.' : '[CLEARED] Penalty Lifted!');
+  };
+
   const deleteQuest = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     setQuests(quests.filter((q: { id: number; }) => q.id !== id));
@@ -169,7 +184,7 @@ export default function DailyAuraApp() {
         <div className="space-y-6 pt-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-700/50 text-purple-300 text-[10px] font-bold tracking-widest uppercase">
-              <Sparkles size={12} /> System v2.8 Online
+              <Sparkles size={12} /> System v3.0 Online
             </div>
             <h1 className="text-3xl font-black tracking-tight leading-tight">
               Gamify Your Life.<br />
@@ -242,6 +257,18 @@ export default function DailyAuraApp() {
           </button>
         </div>
 
+        {/* PENALTY STATUS BANNER */}
+        {hunter.penaltyActive && (
+          <div className="bg-red-950/80 border border-red-600/60 p-2.5 rounded-xl mb-3 flex items-center justify-between text-xs text-red-200 animate-pulse">
+            <span className="flex items-center gap-1.5 font-bold">
+              <AlertOctagon size={14} className="text-red-400" /> PENALTY ZONE: Debuff Active (-50% XP)
+            </span>
+            <button onClick={triggerPenaltySimulation} className="bg-red-900 hover:bg-red-800 px-2 py-1 rounded text-[10px] font-bold text-white">
+              Lift Penalty
+            </button>
+          </div>
+        )}
+
         <div className="bg-[#0b0c1c] p-3 rounded-2xl border border-purple-900/40 shadow-inner mt-2">
           <div className="flex justify-between text-xs mb-1.5 font-medium">
             <span className="text-purple-300 flex items-center gap-1"><Zap size={13} className="text-purple-400" /> XP Progress</span>
@@ -283,6 +310,16 @@ export default function DailyAuraApp() {
                 {isFocusActive ? 'Pause' : 'Enter Gate'}
               </button>
             </div>
+
+            {/* Test Penalty Button */}
+            {!hunter.penaltyActive && (
+              <button 
+                onClick={triggerPenaltySimulation}
+                className="w-full py-2 bg-red-950/40 hover:bg-red-900/50 border border-red-900/50 rounded-xl text-xs font-bold text-red-300 transition-all flex items-center justify-center gap-1.5"
+              >
+                <AlertOctagon size={13} /> Test System Penalty Trigger
+              </button>
+            )}
 
             {/* TWO-BOX WORKFLOW SECTION */}
             <div>
@@ -326,7 +363,6 @@ export default function DailyAuraApp() {
                       </span>
                     </div>
 
-                    {/* BOX 1 & BOX 2 BUTTON CONTROLS */}
                     <div className="flex items-center justify-between pt-2 border-t border-purple-900/30">
                       <span className="text-[10px] uppercase font-bold tracking-widest text-purple-400">
                         Status: <span className="text-white">{quest.status}</span>
@@ -370,7 +406,6 @@ export default function DailyAuraApp() {
               </div>
             </div>
 
-            {/* Consistency Heatmap Card */}
             <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 shadow-xl space-y-3 mt-4">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
@@ -408,4 +443,50 @@ export default function DailyAuraApp() {
                     </span>
                     <div>
                       <p className="text-xs font-bold text-white">{member.name}</p>
-                      <span className="text-[10px] text-purple-300/70">{member.rank} • Lv.{
+                      <span className="text-[10px] text-purple-300/70">{member.rank} • Lv.{member.level}</span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-extrabold text-fuchsia-400">{member.aura} Aura</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="space-y-4">
+            <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase">Hunter Profile</h2>
+            <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 space-y-3 shadow-xl">
+              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
+                <span className="text-purple-400">Hunter Status</span>
+                <span className="font-bold text-purple-300">{hunter.status}</span>
+              </div>
+              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
+                <span className="text-purple-400">Current Rank</span>
+                <span className="font-bold text-purple-300">{hunter.rank}</span>
+              </div>
+              <div className="flex justify-between py-2.5 text-sm">
+                <span className="text-purple-400">Total Aura Points</span>
+                <span className="font-bold text-fuchsia-400">{hunter.aura}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      <nav className="absolute bottom-0 left-0 right-0 bg-[#090a16]/95 backdrop-blur border-t border-purple-900/30 flex justify-around p-3 z-10 shadow-2xl">
+        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-purple-400' : 'text-purple-500/60'}`}>
+          <Shield size={20} /><span className="text-[10px] font-semibold">Dashboard</span>
+        </button>
+        <button onClick={() => setActiveTab('guild')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'guild' ? 'text-purple-400' : 'text-purple-500/60'}`}>
+          <Swords size={20} /><span className="text-[10px] font-semibold">Guild Hall</span>
+        </button>
+        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'profile' ? 'text-purple-400' : 'text-purple-500/60'}`}>
+          <User size={20} /><span className="text-[10px] font-semibold">Profile</span>
+        </button>
+      </nav>
+
+    </div>
+  );
+}
