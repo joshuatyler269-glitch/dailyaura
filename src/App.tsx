@@ -1,533 +1,531 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Swords, User, CheckCircle, Zap, Plus, Trash2, Flame, Award, LogOut, Sparkles, Trophy, Timer, Play, Square, CheckSquare, AlertOctagon, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import {
+  Shield,
+  Swords,
+  User,
+  Zap,
+  Flame,
+  Trophy,
+  Timer,
+  Play,
+  Pause,
+  Plus,
+  Check,
+  Trash2,
+  LogOut,
+  Sparkles,
+  Target,
+  CalendarDays,
+  ChevronRight,
+  Crown,
+  CircleUserRound,
+} from "lucide-react";
 
-const QUEST_POOL = [
-  { title: 'Morning Bodyweight Circuit (20 Pushups/Squats)', xp: 60, category: 'Physical', requiresSensor: true },
-  { title: 'Read 15 Pages of a Non-Fiction Book', xp: 45, category: 'Mental', requiresSensor: false },
-  { title: 'Drink 500ml Water Upon Waking', xp: 25, category: 'Health', requiresSensor: false },
-  { title: '30 Minutes Deep Focus Code Session', xp: 100, category: 'Deep Work', requiresSensor: false },
-  { title: 'Walk 10,000 Steps (itel / Smartwatch Sync)', xp: 80, category: 'Physical', requiresSensor: true },
-  { title: 'Review Termux Git Repos & Backup Code', xp: 50, category: 'Development', requiresSensor: false },
+type Quest = {
+  id: number;
+  title: string;
+  category: string;
+  xp: number;
+  completed: boolean;
+};
+
+const INITIAL_QUESTS: Quest[] = [
+  {
+    id: 1,
+    title: "Complete your morning routine",
+    category: "DISCIPLINE",
+    xp: 50,
+    completed: false,
+  },
+  {
+    id: 2,
+    title: "Read or study for 20 minutes",
+    category: "MENTAL",
+    xp: 40,
+    completed: false,
+  },
+  {
+    id: 3,
+    title: "Complete a focused work session",
+    category: "FOCUS",
+    xp: 100,
+    completed: false,
+  },
+  {
+    id: 4,
+    title: "Review today's goals",
+    category: "PLANNING",
+    xp: 30,
+    completed: false,
+  },
 ];
 
-export default function DailyAuraApp() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('dailyaura_auth') === 'true';
-  });
-  
-  const [authMode, setAuthMode] = useState<'signup' | 'signin'>('signup');
-  const [email, setEmail] = useState('joshuaosayande58@gmail.com');
-  const [password, setPassword] = useState('********');
+const STORAGE_KEY = "daily_aura_rebuild_demo";
 
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [notification, setNotification] = useState<string | null>(null);
-  
-  const [hunter, setHunter] = useState(() => {
-    const saved = localStorage.getItem('dailyaura_hunter');
-    return saved ? JSON.parse(saved) : {
-      name: 'Shadow Monarch',
-      rank: 'E-Rank Hunter',
-      level: 1,
-      xp: 120,
-      maxXp: 300,
-      streak: 3,
-      aura: 450,
-      status: 'Normal',
-      penaltyActive: false
-    };
-  });
+function getSavedData() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
 
-  // Robust Daily Rollover & Two-Box Quest Engine State
-  const [quests, setQuests] = useState(() => {
-    const todayStr = new Date().toDateString();
-    const savedDate = localStorage.getItem('dailyaura_quest_date');
-    const savedQuests = localStorage.getItem('dailyaura_twobox_quests');
+function getRank(level: number) {
+  if (level >= 50) return "S-RANK";
+  if (level >= 35) return "A-RANK";
+  if (level >= 20) return "B-RANK";
+  if (level >= 10) return "C-RANK";
+  if (level >= 5) return "D-RANK";
+  return "E-RANK";
+}
 
-    if (savedDate !== todayStr || !savedQuests) {
-      const shuffled = [...QUEST_POOL].sort(() => 0.5 - Math.random());
-      const dailySelection = shuffled.slice(0, 4).map((q, idx) => ({
-        id: Date.now() + idx,
-        title: q.title,
-        xp: q.xp,
-        status: 'available', // 'available' -> 'active' -> 'completed'
-        category: q.category,
-        requiresSensor: q.requiresSensor
-      }));
-      localStorage.setItem('dailyaura_quest_date', todayStr);
-      localStorage.setItem('dailyaura_twobox_quests', JSON.stringify(dailySelection));
-      return dailySelection;
-    }
+export default function App() {
+  const saved = getSavedData();
 
-    return JSON.parse(savedQuests);
-  });
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
+  const [email, setEmail] = useState("");
+  const [quests, setQuests] = useState<Quest[]>(
+    saved?.quests ?? INITIAL_QUESTS
+  );
+  const [xp, setXp] = useState(saved?.xp ?? 120);
+  const [level, setLevel] = useState(saved?.level ?? 1);
+  const [streak, setStreak] = useState(saved?.streak ?? 3);
+  const [tab, setTab] = useState<"dashboard" | "guild" | "profile">(
+    "dashboard"
+  );
+  const [newQuest, setNewQuest] = useState("");
+  const [timer, setTimer] = useState(25 * 60);
+  const [timerActive, setTimerActive] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [heatmap] = useState<number[]>(
+    saved?.heatmap ??
+      Array.from({ length: 28 }, () => Math.floor(Math.random() * 4))
+  );
 
-  const [newQuestTitle, setNewQuestTitle] = useState('');
-  const [newQuestCategory, setNewQuestCategory] = useState('Discipline');
-
-  const [isFocusActive, setIsFocusActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(1500);
+  const rank = getRank(level);
+  const xpNeeded = level * 300;
+  const progress = Math.min(100, (xp / xpNeeded) * 100);
+  const completedCount = quests.filter((q) => q.completed).length;
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (isFocusActive && timeLeft > 0) {
-      timer = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    } else if (timeLeft === 0 && isFocusActive) {
-      setIsFocusActive(false);
-      triggerSystemAlert('[Dungeon Cleared!] +150 XP Awarded for Deep Focus.');
-      setHunter((prev: { xp: number; aura: number; }) => ({ 
-        ...prev, 
-        xp: prev.xp + 150, 
-        aura: prev.aura + 50,
-        status: 'Normal',
-        penaltyActive: false
-      }));
-      setTimeLeft(1500);
-    }
-    return () => clearInterval(timer);
-  }, [isFocusActive]);
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ quests, xp, level, streak, heatmap })
+    );
+  }, [quests, xp, level, streak, heatmap]);
+
+  useEffect(() => {
+    if (!timerActive) return;
+
+    const interval = window.setInterval(() => {
+      setTimer((current) => {
+        if (current <= 1) {
+          window.clearInterval(interval);
+          setTimerActive(false);
+          setXp((currentXp) => currentXp + 150);
+          setNotice("FOCUS DUNGEON CLEARED · +150 XP");
+          return 25 * 60;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [timerActive]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(""), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    const minutes = Math.floor(seconds / 60);
+    const remainder = seconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(
+      remainder
+    ).padStart(2, "0")}`;
   };
 
-  const [guildMembers] = useState([
-    { id: 1, name: 'Shadow Monarch (You)', level: hunter.level, rank: hunter.rank, aura: hunter.aura, active: true },
-    { id: 2, name: 'Jin-Woo', level: 12, rank: 'S-Rank Hunter', aura: 3420, active: false },
-    { id: 3, name: 'Cha Hae-In', level: 9, rank: 'A-Rank Hunter', aura: 2890, active: true },
-  ]);
+  const claimQuest = (id: number) => {
+    const quest = quests.find((q) => q.id === id);
+    if (!quest || quest.completed) return;
 
-  const [heatmap] = useState([
-    1, 2, 0, 3, 2, 1, 3,
-    0, 1, 2, 2, 3, 1, 2,
-    2, 3, 1, 0, 2, 3, 3,
-    1, 2, 3, 2, 1, 2, 3
-  ]);
+    setQuests((current) =>
+      current.map((q) => (q.id === id ? { ...q, completed: true } : q))
+    );
 
-  useEffect(() => {
-    localStorage.setItem('dailyaura_hunter', JSON.stringify(hunter));
-  }, [hunter]);
-
-  useEffect(() => {
-    localStorage.setItem('dailyaura_twobox_quests', JSON.stringify(quests));
-  }, [quests]);
-
-  const triggerSystemAlert = (msg: string) => {
-    setNotification(msg);
-    // Trigger mobile browser vibration if supported (haptic feedback)
-    if (navigator.vibrate) {
-      navigator.vibrate(50);
-    }
-    setTimeout(() => setNotification(null), 3000);
+    setXp((current) => current + quest.xp);
+    setNotice(`QUEST CLEARED · +${quest.xp} XP`);
   };
 
-  const handleAuthSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsAuthenticated(true);
-    localStorage.setItem('dailyaura_auth', 'true');
-    triggerSystemAlert('System Initialized: Welcome back, Monarch.');
+  const addQuest = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!newQuest.trim()) return;
+
+    setQuests((current) => [
+      {
+        id: Date.now(),
+        title: newQuest.trim(),
+        category: "CUSTOM",
+        xp: 50,
+        completed: false,
+      },
+      ...current,
+    ]);
+
+    setNewQuest("");
+    setNotice("NEW QUEST CREATED · +50 XP AVAILABLE");
   };
 
-  const handleSignOut = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('dailyaura_auth');
+  const signOut = () => {
+    setAuthenticated(false);
+    setTab("dashboard");
   };
 
-  // Box 1: Accept contract into active log
-  const acceptQuest = (id: number) => {
-    setQuests(quests.map((q: { id: number; }) => q.id === id ? { ...q, status: 'active' } : q));
-    triggerSystemAlert('[Contract Accepted] Quest added to active log.');
+  // DEMO LOGIN — real account authentication will be connected later.
+  const handleDemoLogin = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!email.trim()) return;
+    setAuthenticated(true);
+    setNotice("WELCOME TO THE HUNTER SYSTEM");
   };
 
-  // Box 2: Verify sensor / manual completion & grant reward
-  const verifyAndCompleteQuest = (id: number) => {
-    setQuests((prevQuests: any[]) => {
-      return prevQuests.map(q => {
-        if (q.id === id) {
-          if (q.requiresSensor) {
-            triggerSystemAlert('[Telemetry Sync] Pinging itel Device / Smartwatch Sensors...');
-          }
-
-          const multiplier = hunter.penaltyActive ? 0.5 : 1.0;
-          const finalXp = Math.floor(q.xp * multiplier);
-
-          triggerSystemAlert(`[Quest Cleared] +${finalXp} XP Verified & Claimed!`);
-
-          setHunter((prevHunter: { xp: number; level: any; maxXp: any; rank: any; aura: number; }) => {
-            let updatedXp = prevHunter.xp + finalXp;
-            let updatedLevel = prevHunter.level;
-            let updatedMaxXp = prevHunter.maxXp;
-            let updatedRank = prevHunter.rank;
-
-            while (updatedXp >= updatedMaxXp) {
-              updatedXp -= updatedMaxXp;
-              updatedLevel += 1;
-              updatedMaxXp += 200;
-              triggerSystemAlert(`[LEVEL UP!] You have reached Level ${updatedLevel}!`);
-              if (updatedLevel >= 3) updatedRank = 'D-Rank Hunter';
-              if (updatedLevel >= 5) updatedRank = 'C-Rank Hunter';
-            }
-
-            return { 
-              ...prevHunter, 
-              xp: updatedXp, 
-              level: updatedLevel, 
-              maxXp: updatedMaxXp,
-              rank: updatedRank,
-              aura: prevHunter.aura + 25
-            };
-          });
-
-          return { ...q, status: 'completed' };
-        }
-        return q;
-      });
-    });
-  };
-
-  const addCustomQuest = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newQuestTitle.trim()) return;
-
-    const customQuest = {
-      id: Date.now(),
-      title: newQuestTitle.trim(),
-      xp: 50,
-      status: 'active',
-      category: newQuestCategory,
-      requiresSensor: false
-    };
-
-    setQuests([customQuest, ...quests]);
-    setNewQuestTitle('');
-    triggerSystemAlert('[Custom Contract Generated & Active]');
-  };
-
-  const triggerPenaltySimulation = () => {
-    setHunter((prev: { penaltyActive: any; }) => ({
-      ...prev,
-      penaltyActive: !prev.penaltyActive,
-      status: !prev.penaltyActive ? 'PENALTY ZONE (Debuff Active)' : 'Normal'
-    }));
-    triggerSystemAlert(!hunter.penaltyActive ? '[WARNING] System Penalty Triggered! XP gains halved.' : '[CLEARED] Penalty Lifted!');
-  };
-
-  const deleteQuest = (id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setQuests(quests.filter((q: { id: number; }) => q.id !== id));
-  };
-
-  if (!isAuthenticated) {
+  if (!authenticated) {
     return (
-      <div style={{ backgroundColor: '#090a16', color: '#ffffff' }} className="min-h-screen bg-[#090a16] text-white flex flex-col justify-between p-5 max-w-md mx-auto relative shadow-2xl border-x border-purple-950/40">
-        <div className="space-y-6 pt-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-700/50 text-purple-300 text-[10px] font-bold tracking-widest uppercase">
-              <Sparkles size={12} /> System v3.2 Running Web App
+      <div className="min-h-screen bg-[#070611] text-white flex items-center justify-center px-5 py-10">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-violet-400/30 bg-violet-950/40 shadow-[0_0_60px_rgba(139,92,246,0.2)]">
+              <Shield size={38} className="text-violet-300" />
             </div>
-            <h1 className="text-3xl font-black tracking-tight leading-tight">
-              Gamify Your Life.<br />
-              <span className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-indigo-400 bg-clip-text text-transparent">
-                Conquer Procrastination.
-              </span>
+
+            <p className="text-[10px] uppercase tracking-[0.45em] text-violet-400 font-bold">
+              Your personal hunter system
+            </p>
+
+            <h1 className="mt-3 text-4xl font-black tracking-tight">
+              DAILY <span className="text-violet-400">AURA</span>
             </h1>
+
+            <p className="mt-3 text-sm text-violet-200/50">
+              Build discipline. Complete quests. Level up.
+            </p>
           </div>
 
-          <div className="bg-[#121124] p-5 rounded-3xl border border-purple-900/40 shadow-xl space-y-4">
-            <form onSubmit={handleAuthSubmit} className="space-y-3.5">
+          <div className="rounded-3xl border border-violet-900/50 bg-[#100d20] p-6 shadow-2xl">
+            <div className="mb-6 flex rounded-xl bg-black/30 p-1">
+              <button
+                onClick={() => setAuthMode("signup")}
+                className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition ${
+                  authMode === "signup"
+                    ? "bg-violet-700 text-white"
+                    : "text-violet-300/50"
+                }`}
+              >
+                CREATE HUNTER
+              </button>
+              <button
+                onClick={() => setAuthMode("login")}
+                className={`flex-1 rounded-lg py-2.5 text-xs font-bold transition ${
+                  authMode === "login"
+                    ? "bg-violet-700 text-white"
+                    : "text-violet-300/50"
+                }`}
+              >
+                SIGN IN
+              </button>
+            </div>
+
+            <form onSubmit={handleDemoLogin} className="space-y-4">
               <div>
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-purple-400 mb-1">Email Address</label>
-                <input 
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-violet-300/70">
+                  Hunter email
+                </label>
+                <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
                   required
-                  className="w-full bg-black/60 border border-purple-950 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-600"
+                  className="w-full rounded-xl border border-violet-900/50 bg-black/40 px-4 py-3.5 text-sm outline-none transition focus:border-violet-500"
                 />
               </div>
+
               <div>
-                <label className="block text-[10px] uppercase font-bold tracking-wider text-purple-400 mb-1">Password</label>
-                <input 
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-violet-300/70">
+                  Password
+                </label>
+                <input
                   type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter a demo password"
                   required
-                  className="w-full bg-black/60 border border-purple-950 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-600"
+                  className="w-full rounded-xl border border-violet-900/50 bg-black/40 px-4 py-3.5 text-sm outline-none transition focus:border-violet-500"
                 />
               </div>
-              <button 
+
+              <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-purple-600 via-fuchsia-600 to-purple-500 text-white py-3 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-900/50"
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-700 to-fuchsia-700 py-4 text-xs font-black tracking-widest shadow-lg shadow-violet-950/40 transition hover:brightness-110"
               >
-                Enter Hunter Realm
+                <Sparkles size={16} />
+                ENTER THE HUNTER SYSTEM
               </button>
             </form>
+
+            <p className="mt-5 text-center text-[10px] leading-relaxed text-violet-300/30">
+              DEMO MODE · Accounts and passwords are not yet saved or verified.
+            </p>
           </div>
+
+          <p className="mt-6 text-center text-[10px] tracking-widest text-violet-300/20">
+            DAILY AURA SYSTEM · BUILD 001
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ backgroundColor: '#090a16', color: '#ffffff' }} className="min-h-screen bg-[#090a16] text-white flex flex-col max-w-md mx-auto relative pb-24 shadow-2xl border-x border-purple-950/40">
-      
-      {notification && (
-        <div className="absolute top-4 left-4 right-4 z-50 bg-purple-900/90 border border-purple-400 text-purple-100 px-4 py-3 rounded-2xl shadow-[0_0_20px_rgba(168,85,247,0.6)] backdrop-blur text-xs font-bold text-center animate-bounce">
-          {notification}
-        </div>
-      )}
-
-      <header className="p-4 bg-gradient-to-br from-[#13112a] via-[#1a1638] to-[#090a16] backdrop-blur border-b border-purple-900/30 sticky top-0 z-10 shadow-lg">
-        <div className="flex justify-between items-center mb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-widest text-purple-300 font-bold bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-800/40">{hunter.rank}</span>
-              <span className="text-xs bg-purple-900/40 text-purple-200 px-2.5 py-0.5 rounded-full border border-purple-700/50 font-bold">
-                LVL {hunter.level}
-              </span>
-            </div>
-            <h1 className="text-lg font-black tracking-wide text-white mt-1">{email.split('@')[0]}</h1>
-          </div>
-          <button 
-            onClick={handleSignOut}
-            className="text-xs bg-purple-950/80 hover:bg-purple-900 text-purple-300 px-3 py-1.5 rounded-xl border border-purple-800/50 flex items-center gap-1 transition-all"
-          >
-            <LogOut size={13} /> Sign Out
-          </button>
-        </div>
-
-        {hunter.penaltyActive && (
-          <div className="bg-red-950/80 border border-red-600/60 p-2.5 rounded-xl mb-3 flex items-center justify-between text-xs text-red-200 animate-pulse">
-            <span className="flex items-center gap-1.5 font-bold">
-              <AlertOctagon size={14} className="text-red-400" /> PENALTY ZONE: Debuff Active (-50% XP)
-            </span>
-            <button onClick={triggerPenaltySimulation} className="bg-red-900 hover:bg-red-800 px-2 py-1 rounded text-[10px] font-bold text-white">
-              Lift Penalty
-            </button>
+    <div className="min-h-screen bg-[#070611] text-white">
+      <div className="mx-auto min-h-screen max-w-lg border-x border-violet-950/30 bg-[#090815] pb-28">
+        {notice && (
+          <div className="fixed left-4 right-4 top-4 z-50 mx-auto max-w-lg rounded-xl border border-violet-400/50 bg-violet-950 px-4 py-3 text-center text-xs font-bold text-violet-100 shadow-xl">
+            {notice}
           </div>
         )}
 
-        <div className="bg-[#0b0c1c] p-3 rounded-2xl border border-purple-900/40 shadow-inner mt-2">
-          <div className="flex justify-between text-xs mb-1.5 font-medium">
-            <span className="text-purple-300 flex items-center gap-1"><Zap size={13} className="text-purple-400" /> XP Progress</span>
-            <span className="text-purple-300 font-bold">{hunter.xp} / {hunter.maxXp} XP</span>
-          </div>
-          <div className="w-full bg-black/60 h-2.5 rounded-full overflow-hidden p-0.5 border border-purple-950">
-            <div 
-              className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-purple-400 h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
-              style={{ width: `${Math.min(100, (hunter.xp / hunter.maxXp) * 100)}%` }}
-            ></div>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 p-4 overflow-y-auto space-y-4">
-        
-        {activeTab === 'dashboard' && (
-          <div className="space-y-4">
-            
-            {/* Focus Timer Widget */}
-            <div className="bg-gradient-to-br from-purple-950/50 via-[#121124] to-black p-4 rounded-2xl border border-purple-800/40 shadow-xl flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                  <Timer size={13} /> Session Guard / Focus Dungeon
-                </span>
-                <h3 className="text-2xl font-black text-white mt-1 tracking-wider">{formatTime(timeLeft)}</h3>
-                <p className="text-[10px] text-purple-300/70">Clear dungeon to earn +150 XP</p>
-              </div>
-              <button 
-                onClick={() => {
-                  setIsFocusActive(!isFocusActive);
-                  triggerSystemAlert(isFocusActive ? 'Dungeon Paused.' : 'Dungeon Gate Opened: Focus Active.');
-                }}
-                className={`px-4 py-3 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-lg transition-all ${
-                  isFocusActive ? 'bg-amber-600 text-white' : 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white'
-                }`}
-              >
-                {isFocusActive ? <Square size={14} /> : <Play size={14} />}
-                {isFocusActive ? 'Pause' : 'Enter Gate'}
-              </button>
+        <header className="border-b border-violet-900/30 bg-gradient-to-b from-[#17112d] to-[#090815] px-5 pb-5 pt-6">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield size={20} className="text-violet-400" />
+              <span className="text-sm font-black tracking-[0.18em]">
+                DAILY <span className="text-violet-400">AURA</span>
+              </span>
             </div>
 
-            {/* Custom Quest Form */}
-            <form onSubmit={addCustomQuest} className="bg-[#121124] p-3.5 rounded-2xl border border-purple-900/30 space-y-3 shadow-lg">
-              <div className="flex gap-2">
-                <input 
-                  type="text"
-                  placeholder="Add a custom personal quest..."
-                  value={newQuestTitle}
-                  onChange={(e) => setNewQuestTitle(e.target.value)}
-                  className="flex-1 bg-black/50 border border-purple-950 rounded-xl px-3 py-2 text-sm text-white placeholder-purple-400/50 focus:outline-none focus:border-purple-600"
-                />
-                <button 
-                  type="submit"
-                  className="bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition-all flex items-center gap-1"
-                >
-                  <Plus size={14} /> Add
-                </button>
-              </div>
-            </form>
+            <button
+              onClick={signOut}
+              className="flex items-center gap-2 rounded-lg border border-violet-900/40 bg-black/20 px-3 py-2 text-[10px] font-bold text-violet-300/70"
+            >
+              <LogOut size={13} /> SIGN OUT
+            </button>
+          </div>
 
-            {/* TWO-BOX WORKFLOW SECTION */}
-            <div>
-              <div className="flex justify-between items-center mb-3 px-1">
-                <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase flex items-center gap-1">
-                  <CheckSquare size={15} className="text-purple-400" /> Automated Daily Quests (Two-Box)
-                </h2>
-                <span className="text-xs text-purple-400/80 font-medium">Accept & Verify</span>
+          <div className="relative overflow-hidden rounded-2xl border border-violet-700/40 bg-gradient-to-br from-[#24154a] via-[#15102d] to-[#0b0a18] p-5 shadow-[0_0_35px_rgba(124,58,237,0.08)]">
+            <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-violet-600/10 blur-3xl" />
+
+            <div className="relative flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md border border-violet-400/30 bg-violet-400/10 px-2 py-1 text-[9px] font-black tracking-widest text-violet-300">
+                    {rank}
+                  </span>
+                  <span className="text-[10px] font-bold text-violet-200/50">
+                    HUNTER STATUS: ACTIVE
+                  </span>
+                </div>
+
+                <h1 className="mt-3 text-2xl font-black tracking-tight">
+                  {email.split("@")[0] || "New Hunter"}
+                </h1>
+
+                <p className="mt-1 text-xs text-violet-200/50">
+                  The system recognizes your potential.
+                </p>
               </div>
-              
-              <div className="space-y-3">
-                {quests.map((quest: any) => (
-                  <div 
-                    key={quest.id}
-                    className={`p-4 rounded-2xl border transition-all flex flex-col gap-3 shadow-lg ${
-                      quest.status === 'completed' 
-                        ? 'bg-purple-950/30 border-purple-500/30 text-purple-300 opacity-75' 
-                        : quest.status === 'active'
-                        ? 'bg-[#15132d] border-purple-500/60 text-white'
-                        : 'bg-[#121124] border-purple-900/30 text-purple-200'
+
+              <div className="flex h-16 w-16 flex-col items-center justify-center rounded-2xl border border-violet-400/40 bg-violet-950/50 shadow-[0_0_25px_rgba(139,92,246,0.2)]">
+                <Crown size={21} className="text-violet-300" />
+                <span className="mt-1 text-[9px] font-black tracking-wider text-violet-200">
+                  LVL {level}
+                </span>
+              </div>
+            </div>
+
+            <div className="relative mt-6">
+              <div className="mb-2 flex items-center justify-between text-[10px] font-bold">
+                <span className="flex items-center gap-1.5 text-violet-300/70">
+                  <Zap size={13} /> EXPERIENCE
+                </span>
+                <span className="text-violet-200">
+                  {xp} <span className="text-violet-300/30">/ {xpNeeded} XP</span>
+                </span>
+              </div>
+
+              <div className="h-2.5 overflow-hidden rounded-full border border-violet-950 bg-black/50 p-[2px]">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-300 shadow-[0_0_12px_rgba(168,85,247,0.5)] transition-all duration-700"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-3 gap-2">
+              <Stat label="LEVEL" value={level} icon={<Crown size={14} />} />
+              <Stat label="AURA" value={xp} icon={<Zap size={14} />} />
+              <Stat label="STREAK" value={`${streak}D`} icon={<Flame size={14} />} />
+            </div>
+          </div>
+        </header>
+
+        <main className="space-y-6 px-4 pt-5">
+          {tab === "dashboard" && (
+            <>
+              <section className="rounded-2xl border border-violet-900/40 bg-[#100d20] p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-fuchsia-300">
+                      <Timer size={14} /> FOCUS DUNGEON
+                    </div>
+                    <p className="mt-2 text-3xl font-black tracking-widest">
+                      {formatTime(timer)}
+                    </p>
+                    <p className="mt-1 text-[10px] text-violet-300/40">
+                      Clear the dungeon · Reward +150 XP
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setTimerActive((current) => !current)}
+                    className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg transition ${
+                      timerActive
+                        ? "bg-amber-600 text-white"
+                        : "bg-gradient-to-br from-violet-600 to-fuchsia-700 text-white"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className={`text-sm font-medium ${quest.status === 'completed' ? 'line-through text-purple-400' : 'text-white'}`}>
-                          {quest.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] text-purple-300 font-semibold bg-purple-900/40 px-2 py-0.5 rounded border border-purple-800/30">
-                            {quest.category}
-                          </span>
-                          {quest.requiresSensor && (
-                            <span className="text-[9px] text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/40">
-                              itel / Sensor Verified
+                    {timerActive ? <Pause size={22} /> : <Play size={22} />}
+                  </button>
+                </div>
+              </section>
+
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black tracking-[0.2em] text-violet-400">
+                      DAILY CONTRACTS
+                    </p>
+                    <h2 className="mt-1 text-lg font-black">Active Quests</h2>
+                  </div>
+
+                  <span className="rounded-lg border border-violet-900/40 bg-violet-950/30 px-3 py-2 text-[10px] font-bold text-violet-300">
+                    {completedCount}/{quests.length} CLEARED
+                  </span>
+                </div>
+
+                <form onSubmit={addQuest} className="mb-4 flex gap-2">
+                  <input
+                    value={newQuest}
+                    onChange={(event) => setNewQuest(event.target.value)}
+                    placeholder="Create a new quest..."
+                    className="min-w-0 flex-1 rounded-xl border border-violet-900/40 bg-[#100d20] px-3 py-3 text-xs outline-none focus:border-violet-500"
+                  />
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1 rounded-xl bg-violet-700 px-3 text-xs font-bold"
+                  >
+                    <Plus size={15} /> ADD
+                  </button>
+                </form>
+
+                <div className="space-y-3">
+                  {quests.map((quest) => (
+                    <div
+                      key={quest.id}
+                      className={`rounded-2xl border p-4 transition ${
+                        quest.completed
+                          ? "border-violet-900/20 bg-[#0d0b17] opacity-60"
+                          : "border-violet-900/40 bg-[#100d20]"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <button
+                          onClick={() => claimQuest(quest.id)}
+                          disabled={quest.completed}
+                          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition ${
+                            quest.completed
+                              ? "border-violet-500 bg-violet-700 text-white"
+                              : "border-violet-700/60 bg-black/30 text-transparent hover:border-violet-400"
+                          }`}
+                        >
+                          <Check size={14} />
+                        </button>
+
+                        <div className="min-w-0 flex-1">
+                          <h3
+                            className={`text-sm font-bold leading-snug ${
+                              quest.completed
+                                ? "text-violet-300/50 line-through"
+                                : "text-white"
+                            }`}
+                          >
+                            {quest.title}
+                          </h3>
+
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="rounded-md bg-violet-950/50 px-2 py-1 text-[9px] font-black tracking-wider text-violet-300/70">
+                              {quest.category}
                             </span>
-                          )}
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-fuchsia-300">
+                              <Zap size={11} /> +{quest.xp} XP
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-xs font-extrabold text-purple-300 bg-purple-950/80 px-2.5 py-1 rounded-xl border border-purple-800/40">
-                        +{quest.xp} XP
-                      </span>
-                    </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-purple-900/30">
-                      <span className="text-[10px] uppercase font-bold tracking-widest text-purple-400">
-                        Status: <span className="text-white">{quest.status}</span>
-                      </span>
-
-                      <div className="flex gap-2">
-                        {quest.status === 'available' && (
-                          <button 
-                            onClick={() => acceptQuest(quest.id)}
-                            className="bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow transition-all"
-                          >
-                            Box 1: Accept Contract
-                          </button>
-                        )}
-
-                        {quest.status === 'active' && (
-                          <button 
-                            onClick={() => verifyAndCompleteQuest(quest.id)}
-                            className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:opacity-90 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow transition-all flex items-center gap-1"
-                          >
-                            <CheckCircle size={13} /> Box 2: Verify & Claim
-                          </button>
-                        )}
-
-                        {quest.status === 'completed' && (
-                          <span className="text-xs text-emerald-400 font-bold flex items-center gap-1">
-                            <CheckCircle size={14} /> Cleared
-                          </span>
-                        )}
-
-                        <button 
-                          onClick={(e) => deleteQuest(quest.id, e)}
-                          className="text-purple-500 hover:text-red-400 p-1 transition-colors"
+                        <button
+                          onClick={() =>
+                            setQuests((current) =>
+                              current.filter((q) => q.id !== quest.id)
+                            )
+                          }
+                          className="rounded-lg p-1 text-violet-300/20 transition hover:text-red-400"
                         >
                           <Trash2 size={14} />
                         </button>
                       </div>
+
+                      {quest.completed && (
+                        <p className="mt-3 border-t border-violet-900/20 pt-2 text-[9px] font-black tracking-widest text-violet-400">
+                          QUEST CLEARED
+                        </p>
+                      )}
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 shadow-xl space-y-3 mt-4">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
-                  <Award size={15} className="text-purple-400" /> Consistency Heatmap
-                </span>
-                <span className="text-[10px] text-purple-400/70">Past 4 Weeks</span>
-              </div>
-              <div className="grid grid-cols-7 gap-2 pt-1">
-                {heatmap.map((intensity, idx) => {
-                  const bgColors = [
-                    'bg-purple-950/30 border-purple-950',
-                    'bg-purple-900/40 border-purple-800/40',
-                    'bg-purple-700/60 border-purple-600/50',
-                    'bg-fuchsia-500 border-fuchsia-400 shadow-[0_0_6px_rgba(217,70,239,0.5)]'
-                  ];
-                  return <div key={idx} className={`h-7 rounded-lg border transition-all ${bgColors[intensity]}`}></div>;
-                })}
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {activeTab === 'guild' && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase flex items-center gap-1.5">
-              <Trophy size={16} className="text-amber-400" /> Guild Hall Leaderboard
-            </h2>
-            <div className="space-y-2.5">
-              {guildMembers.map((member, index) => (
-                <div key={member.id} className="p-3.5 rounded-2xl border bg-[#121124] border-purple-900/30 flex items-center justify-between shadow-lg">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-purple-950 text-purple-300 border border-purple-800 flex items-center justify-center text-xs font-black">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="text-xs font-bold text-white">{member.name}</p>
-                      <span className="text-[10px] text-purple-300/70">{member.rank} • Lv.{member.level}</span>
-                    </div>
-                  </div>
-                  <span className="text-xs font-extrabold text-fuchsia-400">{member.aura} Aura</span>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </section>
 
-        {activeTab === 'profile' && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-bold tracking-wider text-purple-200 uppercase">Hunter Profile</h2>
-            <div className="bg-[#121124] p-4 rounded-2xl border border-purple-900/30 space-y-3 shadow-xl">
-              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
-                <span className="text-purple-400">Hunter Status</span>
-                <span className="font-bold text-purple-300">{hunter.status}</span>
-              </div>
-              <div className="flex justify-between py-2.5 border-b border-purple-900/30 text-sm">
-                <span className="text-purple-400">Current Rank</span>
-                <span className="font-bold text-purple-300">{hunter.rank}</span>
-              </div>
-              <div className="flex justify-between py-2.5 text-sm">
-                <span className="text-purple-400">Total Aura Points</span>
-                <span className="font-bold text-fuchsia-400">{hunter.aura}</span>
-              </div>
-            </div>
-          </div>
-        )}
+              <section className="rounded-2xl border border-violet-900/40 bg-[#100d20] p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black tracking-[0.2em] text-violet-400">
+                      YOUR JOURNEY
+                    </p>
+                    <h2 className="mt-1 text-lg font-black">Consistency</h2>
+                  </div>
+                  <CalendarDays size={20} className="text-violet-400" />
+                </div>
 
-      </main>
+                <div className="grid grid-cols-7 gap-2">
+                  {heatmap.map((intensity, index) => (
+                    <div
+                      key={index}
+                      title={`Day ${index + 1}`}
+                      className={`aspect-square rounded-md border ${
+                        intensity === 0
+                          ? "border-violet-950/40 bg-black/20"
+                          : intensity === 1
+                          ? "border-violet-900/50 bg-violet-950/60"
+                          : intensity === 2
+                          ? "border-violet-700/60 bg-violet-700/70"
+                          : "border-fuchsia-400/50 bg-fuchsia-500 shadow-[0_0_8px_rgba(217,70,239,0.25)]"
+                      }`}
+                    />
+                  ))}
+                </div>
 
-      <nav className="absolute bottom-0 left-0 right-0 bg-[#090a16]/95 backdrop-blur border-t border-purple-900/30 flex justify-around p-3 z-10 shadow-2xl">
-        <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-purple-400' : 'text-purple-500/60'}`}>
-          <Shield size={20} /><span className="text-[10px] font-semibold">Dashboard</span>
-        </button>
-        <button onClick={() => setActiveTab('guild')} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'guild' ? 'text-purple-400' : 'text-purple-500/60'}`}>
-          <Swords size={20} /><span className="text-[10px] font-semibold">Guild Hall</span>
-        </button>
-        <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center gap-1 transition-colors
+                <div className="mt-4 flex items-center justify-between text-[9px] font-bold text-violet-300/30">
+                  <span>LESS</span>
+                  <div className="flex gap-1.5">
+                    <span className=
